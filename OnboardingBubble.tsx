@@ -159,10 +159,10 @@ const OnboardingBubble: React.FC<Props> = ({ onComplete, existingProfile }) => {
       aria-labelledby="onboarding-title"
     >
       <div 
-        className="bg-gray-900/60 backdrop-blur-lg border border-[#8A1538]/50 rounded-2xl p-6 sm:p-8 w-full max-w-2xl shadow-2xl shadow-[#39FF14]/10"
+        className="bg-surface-900/60 backdrop-blur-lg border border-[var(--accent-2)]/50 rounded-2xl p-6 sm:p-8 w-full max-w-2xl shadow-2xl shadow-[var(--accent-1)]/10"
         style={{ animation: 'slideInUp 0.5s ease-out' }}
       >
-        <h2 id="onboarding-title" className="text-xl sm:text-2xl font-bold text-[#39FF14]">
+        <h2 id="onboarding-title" className="text-xl sm:text-2xl font-bold text-[var(--accent-1)] font-display">
           <Typewriter text={question} onComplete={() => setShowContent(true)} />
         </h2>
         <div className="min-h-[6rem]">

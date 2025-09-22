@@ -20,7 +20,7 @@ const TareasModule: React.FC = () => {
     
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Checklist de Tareas</h3>
+            <h3 className="text-xl font-bold font-display mb-4">Checklist de Tareas</h3>
             <form onSubmit={handleAddTask} className="flex gap-2 mb-4">
                 <input type="text" value={newTask} onChange={(e) => setNewTask(e.target.value)} className="input-field flex-grow" placeholder="Nueva tarea..." />
                 <button type="submit" className="btn btn-primary">Agregar</button>
@@ -40,7 +40,7 @@ const AgendaModule: React.FC = () => {
     }, [notes]);
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Agenda / Notas</h3>
+            <h3 className="text-xl font-bold font-display mb-4">Agenda / Notas</h3>
             <textarea className="input-field w-full h-48" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Escribe tus notas aquí..."></textarea>
         </div>
     );
@@ -61,7 +61,7 @@ const Modules: React.FC = () => {
   const ModuleButton: React.FC<{module: ActiveModule, label: string}> = ({module, label}) => (
       <button 
         onClick={() => setActiveModule(module)}
-        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors border-b-2 ${activeModule === module ? 'text-[#39FF14] border-[#39FF14]' : 'text-gray-400 border-transparent hover:border-gray-500'}`}
+        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors border-b-2 ${activeModule === module ? 'text-[var(--accent-1)] border-[var(--accent-1)]' : 'text-gray-400 border-transparent hover:border-gray-500'}`}
       >
         {label}
       </button>

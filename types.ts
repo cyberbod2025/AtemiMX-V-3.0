@@ -38,3 +38,11 @@ export interface FaseData {
 export interface CatalogoNEM {
   [key: string]: FaseData;
 }
+
+export interface GuardianReport {
+  id: string;
+  title: string;
+  summary: string;
+  transcript: string;
+  date: string;
+}

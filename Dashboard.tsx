@@ -43,14 +43,14 @@ const Dashboard: React.FC = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Mis Proyectos</h2>
+        <h2 className="text-2xl font-bold font-display">Mis Proyectos</h2>
         <button className="btn btn-primary" onClick={createNewProject}>+ Nuevo Proyecto</button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map(project => (
           <div key={project.id} className="card flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-lg text-[#39FF14]">{project.title}</h3>
+              <h3 className="font-bold text-lg text-[var(--accent-1)]">{project.title}</h3>
               <p className="text-sm text-gray-400 mt-1">{project.campo} - Fase {project.fase}</p>
             </div>
             <p className="text-xs text-gray-500 mt-4">Última modificación: {project.lastModified}</p>
