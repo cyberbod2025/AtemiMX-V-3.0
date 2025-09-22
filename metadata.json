@@ -1,0 +1,5 @@
+{
+  "name": "AtemiMX",
+  "description": "An educational assistant for teachers in Mexico, featuring a conversational onboarding, NEM catalog viewer, and basic classroom management tools. Built with a futuristic, glassmorphism UI.",
+  "requestFramePermissions": []
+}
