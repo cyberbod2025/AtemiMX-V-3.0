@@ -1,4 +1,3 @@
-
 import type { CatalogoNEM, CampoFormativo, MateriaSecundaria } from './types';
 import React from 'react';
 
@@ -98,12 +97,12 @@ export const GuardianIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
 export const AtemiLogo: React.ReactElement = React.createElement('svg',
   { viewBox: "0 0 100 100", fill: "none", xmlns: "http://www.w3.org/2000/svg" },
   React.createElement('path', { d: "M50 0L93.3 25V75L50 100L6.7 75V25L50 0Z", fill: "url(#paint0_linear_1_2)" }),
-  React.createElement('path', { d: "M50 10L86.6 30V70L50 90L13.4 70V30L50 10Z", stroke: "#39FF14", strokeWidth: "3" }),
+  React.createElement('path', { d: "M50 10L86.6 30V70L50 90L13.4 70V30L50 10Z", stroke: "#00E676", strokeWidth: "3" }),
   React.createElement('text', { x: "50", y: "58", fontFamily: "Bahnschrift, Segoe UI, sans-serif", fontSize: "30", fill: "#FFFFFF", textAnchor: "middle", fontWeight: "bold" }, 'A'),
   React.createElement('defs', null,
     React.createElement('linearGradient', { id: "paint0_linear_1_2", x1: "50", y1: "0", x2: "50", y2: "100", gradientUnits: "userSpaceOnUse" },
-      React.createElement('stop', { stopColor: "#8A1538" }),
-      React.createElement('stop', { offset: "1", stopColor: "#4D0C20" })
+      React.createElement('stop', { stopColor: "#9B1B30" }),
+      React.createElement('stop', { offset: "1", stopColor: "#6a1322" })
     )
   )
 );

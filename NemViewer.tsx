@@ -11,7 +11,7 @@ const NemViewer: React.FC = () => {
 
   return (
     <div className="card space-y-6">
-      <h2 className="text-2xl font-bold">Visor de Contenidos y Procesos (PDA)</h2>
+      <h2 className="text-2xl font-bold font-display">Visor de Contenidos y Procesos (PDA)</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -46,8 +46,8 @@ const NemViewer: React.FC = () => {
         {campoData && campoData.contenidos.length > 0 ? (
           <div className="space-y-4">
             {campoData.contenidos.map((contenido, index) => (
-              <div key={index} className="p-4 rounded-lg bg-black/20 border border-[#8A1538]/30">
-                <h3 className="font-bold text-[#39FF14]">{contenido.titulo}</h3>
+              <div key={index} className="p-4 rounded-lg bg-black/20 border border-[var(--accent-2)]/30">
+                <h3 className="font-bold text-[var(--accent-1)]">{contenido.titulo}</h3>
                 <ul className="list-disc list-inside mt-2 space-y-1 text-gray-300 pl-2">
                   {contenido.procesos.map((proceso, pIndex) => (
                     <li key={pIndex}>{proceso.descripcion}</li>
