@@ -26,11 +26,11 @@ export const getProfile = (): PerfilDocente | null => {
 };
 
 export const clearProfile = (): void => {
-    try {
-        localStorage.removeItem(PROFILE_KEY);
-    } catch (error) {
-        console.error("Error clearing profile from localStorage", error);
-    }
+  try {
+    localStorage.removeItem(PROFILE_KEY);
+  } catch (error) {
+    console.error("Error clearing profile from localStorage", error);
+  }
 };
 
 // Generic storage functions for modules

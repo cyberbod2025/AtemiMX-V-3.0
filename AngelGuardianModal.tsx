@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI, Type } from '@google/genai';
 import { saveData, loadData } from './services/storageService';
+import { GuardianGenAIClient } from './services/genaiClient';
 import type { GuardianReport } from './types';
 
 // FIX: Add declarations for Web Speech API to prevent TypeScript errors
@@ -14,11 +14,15 @@ declare global {
 
 const STORAGE_KEY = 'guardian_reports';
 
-// Check for browser support
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const isSpeechRecognitionSupported = !!SpeechRecognition;
+// Check for browser support (Vitest usa entorno Node, por eso validamos `window`).
+const speechRecognitionGlobal = typeof window !== 'undefined'
+  ? window.SpeechRecognition || window.webkitSpeechRecognition
+  : null;
+const isSpeechRecognitionSupported = !!speechRecognitionGlobal;
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const aiClient = new GuardianGenAIClient({
+  apiKey: import.meta.env.VITE_GEMINI_API_KEY
+});
 
 interface Props {
   onClose: () => void;
@@ -47,7 +51,14 @@ const AngelGuardianModal: React.FC<Props> = ({ onClose }) => {
       return;
     }
 
-    const recognition = new SpeechRecognition();
+    const recognition = speechRecognitionGlobal
+      ? new (speechRecognitionGlobal as any)()
+      : null;
+
+    if (!recognition) {
+      setError('Tu navegador no expone la API de voz.');
+      return;
+    }
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'es-MX';
@@ -106,28 +117,12 @@ const AngelGuardianModal: React.FC<Props> = ({ onClose }) => {
     setStage('processing');
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: `Basado en la siguiente transcripción de una conversación, genera un título conciso y un resumen objetivo y neutral en español. La transcripción puede contener errores. Tu respuesta DEBE ser un objeto JSON con las claves "title" y "summary".\n\nTRANSCRIPCIÓN:\n"${finalTranscript}"`,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        title: { type: Type.STRING },
-                        summary: { type: Type.STRING }
-                    },
-                    required: ["title", "summary"]
-                }
-            }
-        });
-        const jsonText = response.text.trim();
-        const reportData = JSON.parse(jsonText);
-        setGeneratedReport(reportData);
+        const reportData = await aiClient.generateStructuredSummary(finalTranscript);
+        setGeneratedReport({ title: reportData.title, summary: reportData.summary });
         setStage('review');
     } catch (apiError) {
         console.error(apiError);
-        setError("Error al generar el reporte con la IA. Por favor, intenta de nuevo.");
+        setError(apiError instanceof Error ? apiError.message : "Error al generar el reporte con la IA. Por favor, intenta de nuevo.");
         setStage('idle');
     }
   };
