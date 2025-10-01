@@ -1,20 +1,30 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# AtemiMX Toolkit
 
-# Run and deploy your AI Studio app
+Herramienta educativa para docentes de secundaria que mezcla planeación NEM, actividades STEAM y seguimiento socioemocional.
 
-This contains everything you need to run your app locally.
+## Requisitos
+- Node.js 20
+- npm 10 (Corepack queda deshabilitado en redes con proxy)
 
-View your app in AI Studio: https://ai.studio/apps/drive/1JDDHRMHZwSV-IvH-x8EUoK9I6OQMN-9W
+## Configuración rápida
+1. Instala dependencias: `npm install`
+2. Copia `.env.example` a `.env.local` y agrega `VITE_GEMINI_API_KEY`
+3. Inicia el entorno docente: `npm run dev`
 
-## Run Locally
+## Pruebas y calidad
+- Ejecuta pruebas con datos seguros: `npm test`
+- Modo interactivo: `npm run test:watch`
+- Revisión estática: `npm run lint`
 
-**Prerequisites:**  Node.js
+Las pruebas cargan variables desde `.env.test` mediante `scripts/run-with-env.mjs`.
 
+## Gemini sin SDK bloqueado
+- Eliminamos la dependencia `@google/genai` para esquivar el error 403 en escuelas.
+- El servicio `services/genaiClient.ts` hace la petición REST directa y acepta `fetch` simulado en pruebas.
+- Si recuperas el acceso a pnpm/Corepack, vuelve a instalar el SDK oficial y ajusta el cliente según tus necesidades.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Checklist rápido en Codex
+1. `node -v` → v20.x
+2. `npm -v` → v10.x
+3. `npm install` sin errores
+4. `npm test` → 19/19 casos verdes
