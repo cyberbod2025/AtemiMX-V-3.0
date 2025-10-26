@@ -17,8 +17,8 @@
   },
   "devDependencies": {
     "typescript": "~5.8.2",
-    "vite": "^6.2.0",
-    "vitest": "^2.1.9"
+    "vite": "^7.1.12",
+    "vitest": "^4.0.3"
   },
   "packageManager": "npm@10.9.2"
 }
