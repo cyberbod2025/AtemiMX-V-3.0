@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function hasRole(role) {
+      return request.auth != null && role in request.auth.token.roles;
+    }
+
+    function isOwner(doc) {
+      return request.auth != null && doc.data.autorRef.id == request.auth.uid;
+    }
+
+    match /usuarios/{userId} {
+      allow read: if hasRole('direccion') || request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    match /alumnos/{alumnoId} {
+      allow read: if hasRole('orientacion') || hasRole('direccion') || hasRole('coordinacion');
+      allow create, update: if hasRole('orientacion') || hasRole('direccion');
+    }
+
+    match /reportes/{reporteId} {
+      allow create: if hasRole('docente') && request.resource.data.autorRef.id == request.auth.uid;
+      allow read: if hasRole('direccion') || hasRole('coordinacion') ||
+                   (hasRole('docente') && isOwner(resource)) ||
+                   hasRole('orientacion');
+      allow update: if hasRole('orientacion') || hasRole('direccion');
+      allow delete: if hasRole('direccion');
+    }
+
+    match /prefectura/{registroId} {
+      allow create: if hasRole('prefectura');
+      allow read: if hasRole('prefectura') || hasRole('direccion') || hasRole('coordinacion');
+      allow update: if hasRole('prefectura') || hasRole('orientacion');
+      allow delete: if false;
+    }
+
+    match /bitacora/{eventoId} {
+      allow read: if hasRole('direccion');
+      allow write: if request.auth != null;
+    }
+  }
+}
