@@ -1,160 +1,58 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es-MX">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AtemiMX</title>
     <link rel="icon" type="image/png" href="/LOGO.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@600&display=swap"
+      rel="stylesheet"
+    />
     <style>
       :root {
-        /* Palette */
-        --bg-900: #0B0B0E;
+        --bg-900: #0b0b0e;
         --surface-800: #121214;
-        --surface-700: #18181B;
-        --muted: #2A2B2D;
-        --txt-primary: #E6E7E8;
-        --txt-secondary: #9ca3af; /* From old theme, still useful */
-        --accent-1: #00E676; /* Neon Green */
+        --surface-700: #18181b;
+        --muted: #2a2b2d;
+        --txt-primary: #e6e7e8;
+        --accent-1: #00e676;
         --accent-1-hover: #33ff99;
-        --accent-2: #9B1B30; /* Guinda */
-        --metal: #C0C6CC;
-        --warn: #FFB020;
-        --success: #2ECC71;
-        --error: #FF4D4F;
-        --txt-dark: #0B0B0E;
-        
-        /* Typography */
-        --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        --font-display: 'Poppins', sans-serif;
-
-        /* Tokens */
-        --radius: 1rem; /* rounded-2xl */
-        --shadow-soft: 0 8px 24px rgba(0,0,0,0.45);
-        --transition-micro: 120ms;
-        --transition-medium: 220ms;
+        --accent-2: #9b1b30;
+        --font-main: 'Inter', system-ui, sans-serif;
       }
-      /* Reset and base styles */
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      html { scroll-behavior: smooth; }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
       body {
+        background-color: var(--bg-900);
+        color: var(--txt-primary);
         font-family: var(--font-main);
-        background-color: var(--bg-900);
-        color: var(--txt-primary);
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-      ::selection { background-color: var(--accent-1); color: var(--txt-dark); }
-      #root { min-height: 100vh; }
-      
-      /* Animations */
-      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-      @keyframes slideInUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-      @keyframes blink { 50% { opacity: 0; } }
-      
-      .blinking-cursor {
-        font-weight: bold;
-        animation: blink 1s step-end infinite;
-        color: var(--accent-1);
-        margin-left: 2px;
-      }
-      
-      /* Main App Layout */
-      .container { width: 100%; max-width: 1280px; margin-left: auto; margin-right: auto; padding-left: 1rem; padding-right: 1rem; }
-      @media (min-width: 640px) { .container { padding-left: 1.5rem; padding-right: 1.5rem; } }
-      @media (min-width: 1024px) { .container { padding-left: 2rem; padding-right: 2rem; } }
-
-      .card {
-        background-color: var(--surface-800);
-        border: 1px solid var(--muted);
-        border-radius: var(--radius);
-        padding: 1.5rem;
-        transition: transform var(--transition-medium) ease-out, box-shadow var(--transition-medium) ease-out, border-color var(--transition-medium) ease-out;
-      }
-      .card:hover { 
-        transform: translateY(-6px); 
-        box-shadow: var(--shadow-soft);
-        border-color: var(--accent-2);
       }
 
-      /* Buttons */
-      .btn {
-        display: inline-block;
-        padding: 0.75rem 1.5rem;
-        border-radius: var(--radius);
-        font-weight: 600;
-        text-align: center;
-        cursor: pointer;
-        transition: all var(--transition-micro) ease-in-out;
-        border: 1px solid transparent;
-        user-select: none;
-      }
-      .btn:disabled { cursor: not-allowed; opacity: 0.5; }
-
-      .btn-primary {
-        background-color: var(--accent-1);
-        color: var(--txt-dark);
-        border-color: var(--accent-1);
-        box-shadow: 0 4px 14px rgba(0, 230, 118, 0.3);
-      }
-      .btn-primary:hover:not(:disabled) { 
-        transform: scale(1.02); 
-        background-color: var(--accent-1-hover);
-        border-color: var(--accent-1-hover);
-      }
-
-      .btn-secondary {
-        background-color: transparent;
-        color: var(--txt-primary);
-        border-color: var(--muted);
-      }
-      .btn-secondary:hover:not(:disabled) { 
-        background-color: var(--surface-700); 
-        border-color: var(--metal);
-      }
-      
-      /* Inputs and Selects */
-      .input-field, .select-field {
-        width: 100%;
-        background-color: var(--bg-900);
-        border: 1px solid var(--muted);
-        border-radius: 0.75rem;
-        padding: 0.75rem 1rem;
-        color: var(--txt-primary);
-        font-size: 1rem;
-        transition: border-color var(--transition-medium), box-shadow var(--transition-medium);
-      }
-      .input-field:focus, .select-field:focus {
-        outline: none;
-        border-color: var(--accent-1);
-        box-shadow: 0 0 0 3px rgba(0, 230, 118, 0.3);
-      }
-      .select-field {
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23C0C6CC' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-        background-position: right 0.5rem center;
-        background-repeat: no-repeat;
-        background-size: 1.5em 1.5em;
-        padding-right: 2.5rem;
+      #root {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "@google/genai": "https://esm.sh/@google/genai"
-  }
-}
-</script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

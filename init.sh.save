@@ -1,0 +1,23 @@
+#!/bin/bash
+echo "🚀 Iniciando entorno Profe Hugo IA + Docencia"
+
+# Actualiza sistema
+sudo apt update && sudo apt upgrade -y
+
+# Crea entorno virtual
+python3 -m venv venv
+source venv/bin/activate
+
+# Actualiza pip y setuptools
+pip install --upgrade pip setuptools wheel
+
+# Instala librerías base
+if [ -f requirements.txt ]; then
+    echo "📦 Instalando librerías desde requirements.txt..."
+    pip install -r requirements.txt
+else
+    echo "⚠️ No se encontró requirements.txt"
+fi
+
+# Mensaje final
+echo "✅ Entorno listo. Ejecuta 'source venv/bin/activate' para usarlo."
