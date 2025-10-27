@@ -4,6 +4,7 @@ import OnboardingBubble from "./OnboardingBubble";
 import AngelGuardian from "./AngelGuardian";
 import Modules from "./Modules";
 import NemViewer from "./NemViewer";
+import Sase310Module from "./modules/sase310/Sase310Module";
 
 export default function App() {
   return (
@@ -24,6 +25,9 @@ export default function App() {
         <OnboardingBubble />
         <Dashboard />
         <Modules />
+        <section style={{ marginTop: "2rem" }}>
+          <Sase310Module />
+        </section>
         <NemViewer />
         <AngelGuardian />
       </section>

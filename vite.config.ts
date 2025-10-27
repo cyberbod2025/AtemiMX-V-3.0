@@ -4,6 +4,7 @@ import { defineConfig } from "vite";
 const projectRoot = new URL("./", import.meta.url).pathname;
 
 export default defineConfig({
+  base: "./",
   plugins: [react()],
   esbuild: {
     jsx: "automatic",
@@ -16,7 +17,12 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      external: ["firebase/app", "firebase/auth", "firebase/firestore", "firebase/functions"],
+      // external: [
+      //   "firebase/app",
+      //   "firebase/auth",
+      //   "firebase/firestore",
+      //   "firebase/functions"
+      // ],
     },
   },
   optimizeDeps: {
