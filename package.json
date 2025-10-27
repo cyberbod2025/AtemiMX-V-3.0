@@ -7,18 +7,24 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/run-with-env.mjs vitest run --reporter=dot",
+    "test": "vitest run --reporter=dot",
     "test:watch": "node scripts/run-with-env.mjs vitest",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "firebase": "^11.10.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "@vitest/coverage-v8": "^4.0.3",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
-    "vitest": "^2.1.9"
+    "vitest": "^4.0.3"
   },
   "packageManager": "npm@10.9.2"
 }
