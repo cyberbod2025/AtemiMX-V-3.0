@@ -9,6 +9,7 @@ import {
   type ReportInput,
 } from "./firestoreService";
 import { loginUser, logoutUser, registerUser } from "../../services/authService";
+import { ensureUserProfile, observeUserProfile, type UserProfile } from "./auth/services/userService";
 
 type AuthMode = "login" | "register";
 
@@ -28,6 +29,7 @@ const emptyAuthForm: AuthFormState = { email: "", password: "" };
 const emptyReportForm: ReportFormState = { title: "", description: "", category: "", date: "" };
 
 const CATEGORIES = ["Seguimiento", "Incidencia", "Planeacion", "Otro"];
+const INSTITUTIONAL_EMAIL_REGEX = /@institucion\.mx$/i;
 
 const Sase310Module: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -36,6 +38,11 @@ const Sase310Module: React.FC = () => {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authInfo, setAuthInfo] = useState<string | null>(null);
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const [reports, setReports] = useState<Report[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
@@ -50,6 +57,7 @@ const Sase310Module: React.FC = () => {
     () => authLoading || authSubmitting || reportSubmitting,
     [authLoading, authSubmitting, reportSubmitting],
   );
+  const isAuthorized = profile?.autorizado === true;
 
   const clearReportFeedback = useCallback(() => {
     setReportError(null);
@@ -57,7 +65,15 @@ const Sase310Module: React.FC = () => {
   }, []);
 
   const handleAuthInputChange = (field: keyof AuthFormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    setAuthError(null);
+    setAuthInfo(null);
     setAuthForm((previous) => ({ ...previous, [field]: event.target.value }));
+  };
+
+  const handleAuthModeChange = (mode: AuthMode) => {
+    setAuthMode(mode);
+    setAuthError(null);
+    setAuthInfo(null);
   };
 
   const handleReportInputChange =
@@ -67,7 +83,7 @@ const Sase310Module: React.FC = () => {
     };
 
   const fetchReports = useCallback(async () => {
-    if (!user) {
+    if (!user || !isAuthorized) {
       setReports([]);
       return;
     }
@@ -83,24 +99,75 @@ const Sase310Module: React.FC = () => {
     } finally {
       setReportsLoading(false);
     }
-  }, [user]);
+  }, [user, isAuthorized]);
 
   useEffect(() => {
     void fetchReports();
   }, [fetchReports]);
 
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      setProfileLoading(false);
+      setProfileError(null);
+      return;
+    }
+
+    setProfileLoading(true);
+    setProfileError(null);
+
+    const unsubscribe = observeUserProfile(
+      user.uid,
+      (nextProfile) => {
+        setProfile(nextProfile);
+        setProfileLoading(false);
+      },
+      () => {
+        setProfileError("No se pudo cargar tu perfil docente. Intenta nuevamente.");
+        setProfileLoading(false);
+      },
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user || profileLoading || profile || !user.email) {
+      return;
+    }
+    void ensureUserProfile(user.uid, user.email).catch((error: unknown) => {
+      console.error("[SASE-310] Sincronizacion de perfil docente fallida:", error);
+      setProfileError(
+        error instanceof Error ? error.message : "No fue posible sincronizar tu perfil docente.",
+      );
+    });
+  }, [user, profile, profileLoading]);
+
   const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setAuthError(null);
+    setAuthInfo(null);
     setAuthSubmitting(true);
 
-    const { email, password } = authForm;
+    const normalizedEmail = authForm.email.trim().toLowerCase();
+    const { password } = authForm;
+
+    if (authMode === "register" && !INSTITUTIONAL_EMAIL_REGEX.test(normalizedEmail)) {
+      setAuthSubmitting(false);
+      setAuthError("El registro docente solo acepta correos @institucion.mx.");
+      return;
+    }
 
     try {
       if (authMode === "login") {
-        await loginUser(email, password);
+        const account = await loginUser(normalizedEmail, password);
+        await ensureUserProfile(account.uid, account.email ?? normalizedEmail);
       } else {
-        await registerUser(email, password);
+        const account = await registerUser(normalizedEmail, password);
+        await ensureUserProfile(account.uid, account.email ?? normalizedEmail);
+        setAuthInfo("Registro enviado. Un administrador revisara tu solicitud y te notificara al autorizarte.");
       }
       setAuthForm(emptyAuthForm);
     } catch (error) {
@@ -113,6 +180,8 @@ const Sase310Module: React.FC = () => {
 
   const handleLogout = async () => {
     setAuthError(null);
+    setAuthInfo(null);
+    setProfileError(null);
     setAuthSubmitting(true);
     try {
       await logoutUser();
@@ -128,6 +197,11 @@ const Sase310Module: React.FC = () => {
     event.preventDefault();
     if (!user) {
       setReportError("Necesitas iniciar sesion para crear reportes.");
+      return;
+    }
+
+    if (!isAuthorized) {
+      setReportError("Tu cuenta docente aun no ha sido autorizada para crear reportes.");
       return;
     }
 
@@ -159,6 +233,11 @@ const Sase310Module: React.FC = () => {
       return;
     }
 
+    if (!user || !isAuthorized) {
+      setReportError("No cuentas con permisos para eliminar reportes.");
+      return;
+    }
+
     setReportSubmitting(true);
     clearReportFeedback();
 
@@ -182,7 +261,7 @@ const Sase310Module: React.FC = () => {
           <button
             type="button"
             className={`btn ${authMode === "login" ? "btn-primary" : "btn-secondary"}`}
-            onClick={() => setAuthMode("login")}
+            onClick={() => handleAuthModeChange("login")}
             disabled={isBusy}
           >
             Iniciar sesion
@@ -190,7 +269,7 @@ const Sase310Module: React.FC = () => {
           <button
             type="button"
             className={`btn ${authMode === "register" ? "btn-primary" : "btn-secondary"}`}
-            onClick={() => setAuthMode("register")}
+            onClick={() => handleAuthModeChange("register")}
             disabled={isBusy}
           >
             Registrar
@@ -234,6 +313,7 @@ const Sase310Module: React.FC = () => {
         </div>
 
         {authError ? <p className="text-sm text-red-400">{authError}</p> : null}
+        {authInfo ? <p className="text-sm text-emerald-400">{authInfo}</p> : null}
 
         <button
           type="submit"
@@ -254,6 +334,92 @@ const Sase310Module: React.FC = () => {
     </div>
   );
 
+  const renderProfileLoading = () => (
+    <section className="space-y-6">
+      <div className="card">
+        <p className="text-sm text-gray-400">Validando permisos docentes...</p>
+      </div>
+    </section>
+  );
+
+  const renderProfileError = () => (
+    <section className="space-y-6">
+      <div className="card">
+        <h3 className="text-lg font-display mb-2">No fue posible cargar tu perfil docente</h3>
+        <p className="text-sm text-red-400">{profileError}</p>
+        <p className="text-xs text-gray-500 mt-3">
+          Si el problema persiste, contacta al administrador para confirmar tu registro.
+        </p>
+      </div>
+      <div className="card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm text-gray-400">Puedes cerrar sesion e intentarlo mas tarde.</p>
+        <button
+          type="button"
+          className="btn btn-secondary md:w-auto w-full"
+          onClick={handleLogout}
+          disabled={isBusy}
+        >
+          {authSubmitting ? "Cerrando sesion..." : "Cerrar sesion"}
+        </button>
+      </div>
+    </section>
+  );
+
+  const renderProfileUnavailable = () => (
+    <section className="space-y-6">
+      <div className="card">
+        <h3 className="text-lg font-display mb-2">Perfil docente en preparación</h3>
+        <p className="text-sm text-gray-400">
+          Estamos sincronizando tu registro con el sistema de reportes. Recarga la pagina en unos momentos.
+        </p>
+      </div>
+      <div className="card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm text-gray-400">Si ya paso un tiempo considerable, avisa a tu administrador.</p>
+        <button
+          type="button"
+          className="btn btn-secondary md:w-auto w-full"
+          onClick={handleLogout}
+          disabled={isBusy}
+        >
+          {authSubmitting ? "Cerrando sesion..." : "Cerrar sesion"}
+        </button>
+      </div>
+    </section>
+  );
+
+  const renderPendingAuthorization = () => (
+    <section className="space-y-6">
+      <div className="card">
+        <h3 className="text-lg font-display mb-2">Tu cuenta esta en revisión</h3>
+        <p className="text-sm text-gray-400">
+          Recibimos tu solicitud. Un administrador validara tu correo institucional antes de habilitar el acceso.
+        </p>
+        <div className="mt-4 text-xs text-gray-500 space-y-1">
+          <p>
+            <span className="font-semibold text-white">Correo:</span> {user?.email ?? "Sin correo"}
+          </p>
+          <p>
+            <span className="font-semibold text-white">Rol asignado:</span> {profile?.rol ?? "docente"}
+          </p>
+        </div>
+        {authInfo ? <p className="text-sm text-emerald-400 mt-4">{authInfo}</p> : null}
+      </div>
+      <div className="card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm text-gray-400">
+          Te notificaremos en cuanto tu cuenta quede autorizada. Puedes cerrar sesion y regresar mas tarde.
+        </p>
+        <button
+          type="button"
+          className="btn btn-secondary md:w-auto w-full"
+          onClick={handleLogout}
+          disabled={isBusy}
+        >
+          {authSubmitting ? "Cerrando sesion..." : "Cerrar sesion"}
+        </button>
+      </div>
+    </section>
+  );
+
   const renderHeader = () => (
     <header className="card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
@@ -265,6 +431,7 @@ const Sase310Module: React.FC = () => {
       <div className="flex flex-col items-start gap-2 md:items-end">
         <div className="text-sm text-gray-300">
           <span className="font-semibold text-white">{user?.email ?? "Sin correo"}</span>
+          <span className="block text-xs text-gray-500">Rol: {profile?.rol ?? "Sin rol"}</span>
         </div>
         <button type="button" className="btn btn-secondary" onClick={handleLogout} disabled={isBusy}>
           {authSubmitting ? "Cerrando sesion..." : "Cerrar sesion"}
@@ -413,6 +580,22 @@ const Sase310Module: React.FC = () => {
         </div>
       </section>
     );
+  }
+
+  if (profileLoading) {
+    return renderProfileLoading();
+  }
+
+  if (profileError) {
+    return renderProfileError();
+  }
+
+  if (!profile) {
+    return renderProfileUnavailable();
+  }
+
+  if (!isAuthorized) {
+    return renderPendingAuthorization();
   }
 
   return (
