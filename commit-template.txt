@@ -1,0 +1,66 @@
+###############################################################
+#  COMMIT TEMPLATE OFICIAL — AtemiMX / SASE-310
+#  Autor: Profe Hugo Sánchez Reséndiz
+#  Flujo: S-SDLC  (Diseño → Autorización → Codificación → Revisión → Validación → Despliegue)
+###############################################################
+
+# 🔍 Prefijo obligatorio:
+# Usa uno de los siguientes, según el estado del código:
+#   🧩 DevStart:   inicio de módulo o componente
+#   🧠 Refactor:   mejora o limpieza interna
+#   🔒 SecurityFix: corrección de vulnerabilidad
+#   🔍 ReviewPassed: validación aprobada tras revisión técnica
+#   🚀 Deploy:     despliegue oficial a Firebase Hosting
+
+🔍 ReviewPassed: Auth2.0_AccessControl | firestore.rules corregidas + AdminPanel con selector de roles
+
+---------------------------------------------------------------
+# ✏️ Descripción corta (1 línea)
+# Explica el cambio principal de forma clara y precisa.
+
+Descripción:
+Actualización de reglas Firestore para lectura segura y ampliación de roles asignables en AdminPanel.tsx.
+
+---------------------------------------------------------------
+# 📋 Detalle técnico (opcional, máximo 10 líneas)
+# Explica qué se modificó, por qué y qué impacto tiene.
+
+Detalles:
+- Eliminado bucle lógico en firestore.rules que impedía lectura del estado autorizado:false.
+- Añadido selector dinámico de roles en AdminPanel (docente, prefectura, orientación, dirección).
+- Validado con script validate-auth2.ps1.
+- Listo para revisión técnica final y despliegue controlado con deploy-auth2.ps1.
+
+---------------------------------------------------------------
+# ✅ Checklist rápido (marca ✔️ antes de commit)
+# [ ] Validación local pasada (validate-auth2.ps1)
+# [ ] Build Vite exitoso
+# [ ] Último commit revisado con prefijo correcto
+# [ ] Revisado por desarrollador (VoBo)
+# [ ] Listo para deploy
+---------------------------------------------------------------
+
+💡 Cómo usarlo
+
+Configura Git para usarlo como plantilla predeterminada:
+
+git config commit.template commit-template.txt
+
+
+Luego, cuando ejecutes:
+
+git commit
+
+
+Git abrirá automáticamente este formato en tu editor para llenarlo paso a paso.
+
+Cuando uses commits rápidos (con -m), sigue siempre el formato:
+
+git commit -m "🔍 ReviewPassed: Auth2.0_AccessControl | firestore.rules corregidas + AdminPanel con selector de roles"
+
+
+Con esto cierras el circuito técnico completo del ciclo AtemiMX-SASE310 ✅:
+
+Diseño → Revisión → Validación → Commit estandarizado → Deploy seguro
+
+¿Quieres que te cree también el README interno del ciclo S-SDLC (v3.5), que documente cómo usar estos tres archivos juntos (validate, deploy y commit template)?

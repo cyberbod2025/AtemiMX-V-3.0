@@ -1,4 +1,4 @@
-CODEX.md — Contexto técnico para GitHub Copilot / Codex
+CODEX.md — Context técnico para GitHub Copilot / Codex
 Proyecto: AtemiMX-V-3.0
 Módulo activo: SASE-310 (Sistema de Acompañamiento y Seguimiento Escolar)
 Autor: Profe Hugo Sánchez Reséndiz
