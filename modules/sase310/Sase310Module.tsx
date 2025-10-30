@@ -1,22 +1,28 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../../hooks/useAuth";
+import { loginUser, logoutUser } from "../../services/authService";
+import RegisterForm, { type RegisterFormValues } from "./auth/components/RegisterForm";
+import TeacherProfileForm from "./auth/components/TeacherProfileForm";
 import {
-  createReport,
-  deleteReport,
-  getReportsByUser,
-  type Report,
-  type ReportInput,
-} from "./firestoreService";
-import { loginUser, logoutUser, registerUser } from "../../services/authService";
-import { ensureUserProfile, observeUserProfile, type UserProfile } from "./auth/services/userService";
+  ensureUserProfile,
+  observeTeacherProfile,
+  observeUserProfile,
+  registerUserWithWhitelist,
+  saveTeacherProfile,
+  type TeacherProfile,
+  type UserProfile,
+} from "./auth/services/userService";
+import { createReport, deleteReport, getReportsByUser, type Report, type ReportInput } from "./firestoreService";
 
-type AuthMode = "login" | "register";
+type AuthStep = "chooser" | "login" | "register";
 
 interface AuthFormState {
   email: string;
   password: string;
 }
+
+type RegisterFormState = RegisterFormValues;
 
 interface ReportFormState {
   title: string;
@@ -25,17 +31,49 @@ interface ReportFormState {
   date: string;
 }
 
+interface Sase310ModuleProps {
+  onNavigateHome?: () => void;
+}
+
+const EMAIL_WHITELIST_REGEX = /@(institucion\.mx|aefcm\.gob\.mx|gmail\.com)$/i;
+const CATEGORIES = ["Seguimiento", "Incidencia", "Planeacion", "Otro"];
+
 const emptyAuthForm: AuthFormState = { email: "", password: "" };
+const emptyRegisterForm: RegisterFormState = { nombreCompleto: "", email: "", password: "" };
 const emptyReportForm: ReportFormState = { title: "", description: "", category: "", date: "" };
 
-const CATEGORIES = ["Seguimiento", "Incidencia", "Planeacion", "Otro"];
-const INSTITUTIONAL_EMAIL_REGEX = /@institucion\.mx$/i;
+const chooserButtonStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  justifyContent: "center",
+  gap: "0.25rem",
+  width: "100%",
+  padding: "1rem 1.25rem",
+  borderRadius: "14px",
+  border: "1px solid var(--accent-1)",
+  background: "rgba(0, 230, 118, 0.12)",
+  color: "#e6e7e8",
+  textAlign: "left",
+  fontSize: "0.95rem",
+  fontWeight: 600,
+  cursor: "pointer",
+  transition: "transform 0.18s ease, box-shadow 0.18s ease",
+};
 
-const Sase310Module: React.FC = () => {
+const chooserSecondaryButtonStyle: React.CSSProperties = {
+  ...chooserButtonStyle,
+  border: "1px solid rgba(255, 255, 255, 0.15)",
+  background: "rgba(18, 18, 20, 0.85)",
+  color: "rgba(230, 231, 232, 0.9)",
+};
+
+const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   const { user, loading: authLoading } = useAuth();
 
+  const [authStep, setAuthStep] = useState<AuthStep>("chooser");
   const [authForm, setAuthForm] = useState<AuthFormState>(emptyAuthForm);
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
+  const [registerForm, setRegisterForm] = useState<RegisterFormState>(emptyRegisterForm);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authInfo, setAuthInfo] = useState<string | null>(null);
@@ -43,6 +81,11 @@ const Sase310Module: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+
+  const [teacherProfile, setTeacherProfile] = useState<TeacherProfile | null>(null);
+  const [teacherProfileLoading, setTeacherProfileLoading] = useState(false);
+  const [teacherProfileError, setTeacherProfileError] = useState<string | null>(null);
+  const [teacherProfileSubmitting, setTeacherProfileSubmitting] = useState(false);
 
   const [reports, setReports] = useState<Report[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
@@ -53,34 +96,115 @@ const Sase310Module: React.FC = () => {
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportSuccess, setReportSuccess] = useState<string | null>(null);
 
-  const isBusy = useMemo(
-    () => authLoading || authSubmitting || reportSubmitting,
-    [authLoading, authSubmitting, reportSubmitting],
-  );
+  const normalizedAuthEmail = authForm.email.trim().toLowerCase();
+  const normalizedRegisterEmail = registerForm.email.trim().toLowerCase();
+
+  const isRegisterEmailValid = useMemo(() => {
+    if (!normalizedRegisterEmail) {
+      return true;
+    }
+    return EMAIL_WHITELIST_REGEX.test(normalizedRegisterEmail);
+  }, [normalizedRegisterEmail]);
+
   const isAuthorized = profile?.autorizado === true;
 
-  const clearReportFeedback = useCallback(() => {
-    setReportError(null);
-    setReportSuccess(null);
-  }, []);
+  const isBusy = authSubmitting || reportSubmitting || teacherProfileSubmitting;
 
-  const handleAuthInputChange = (field: keyof AuthFormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    setAuthError(null);
-    setAuthInfo(null);
-    setAuthForm((previous) => ({ ...previous, [field]: event.target.value }));
-  };
-
-  const handleAuthModeChange = (mode: AuthMode) => {
-    setAuthMode(mode);
+  const resetAuthMessages = () => {
     setAuthError(null);
     setAuthInfo(null);
   };
 
-  const handleReportInputChange =
-    (field: keyof ReportFormState) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      clearReportFeedback();
-      setReportForm((previous) => ({ ...previous, [field]: event.target.value }));
+  const handleSelectStep = (step: AuthStep) => {
+    setAuthStep(step);
+    resetAuthMessages();
+    setAuthForm(emptyAuthForm);
+    setRegisterForm(emptyRegisterForm);
+  };
+
+  const handleAuthInputChange =
+    (field: keyof AuthFormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      resetAuthMessages();
+      setAuthForm((prev) => ({ ...prev, [field]: event.target.value }));
     };
+
+  const handleRegisterFieldChange = (field: keyof RegisterFormState, value: string) => {
+    resetAuthMessages();
+    setRegisterForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    resetAuthMessages();
+    setAuthSubmitting(true);
+    try {
+      if (!normalizedAuthEmail || !authForm.password) {
+        setAuthError("Completa tu correo y contrasena.");
+        return;
+      }
+      const account = await loginUser(normalizedAuthEmail, authForm.password);
+      await ensureUserProfile(account.uid, account.email ?? normalizedAuthEmail);
+      setAuthForm(emptyAuthForm);
+      setAuthStep("chooser");
+    } catch (error) {
+      console.error("[SASE-310] Login failed:", error);
+      setAuthError(error instanceof Error ? error.message : "No fue posible iniciar sesion.");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleRegisterSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    resetAuthMessages();
+
+    const nombreCompleto = registerForm.nombreCompleto.trim();
+    if (!nombreCompleto) {
+      setAuthError("Ingresa tu nombre completo tal como aparece en la plantilla autorizada.");
+      return;
+    }
+    if (!normalizedRegisterEmail || !registerForm.password) {
+      setAuthError("Completa tu correo institucional y una contrasena segura.");
+      return;
+    }
+    if (!isRegisterEmailValid) {
+      setAuthError("Usa un correo permitido por la institucion.");
+      return;
+    }
+
+    setAuthSubmitting(true);
+    try {
+      const { profile: createdProfile } = await registerUserWithWhitelist({
+        nombreCompleto,
+        email: normalizedRegisterEmail,
+        password: registerForm.password,
+      });
+      setRegisterForm(emptyRegisterForm);
+      setAuthInfo("Registro completado. Puedes continuar con SASE-310.");
+      setProfile(createdProfile);
+      setAuthStep("chooser");
+    } catch (error) {
+      console.error("[SASE-310] Register failed:", error);
+      setAuthError(error instanceof Error ? error.message : "No fue posible completar el registro.");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setAuthSubmitting(true);
+    try {
+      await logoutUser();
+      setAuthStep("chooser");
+      setAuthForm(emptyAuthForm);
+      onNavigateHome?.();
+    } catch (error) {
+      console.error("[SASE-310] Logout failed:", error);
+      setAuthError("No fue posible cerrar sesion. Intenta nuevamente.");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
 
   const fetchReports = useCallback(async () => {
     if (!user || !isAuthorized) {
@@ -94,8 +218,8 @@ const Sase310Module: React.FC = () => {
       const data = await getReportsByUser(user.uid);
       setReports(data);
     } catch (error) {
-      console.error("[SASE-310] Failed to load reports:", error);
-      setReportsError("No fue posible cargar los reportes. Intenta de nuevo.");
+      console.error("[SASE-310] Failed to fetch reports:", error);
+      setReportsError("No fue posible cargar los reportes.");
     } finally {
       setReportsLoading(false);
     }
@@ -112,102 +236,73 @@ const Sase310Module: React.FC = () => {
       setProfileError(null);
       return;
     }
-
     setProfileLoading(true);
     setProfileError(null);
-
     const unsubscribe = observeUserProfile(
       user.uid,
       (nextProfile) => {
         setProfile(nextProfile);
         setProfileLoading(false);
       },
-      () => {
-        setProfileError("No se pudo cargar tu perfil docente. Intenta nuevamente.");
+      (error) => {
+        console.error("[SASE-310] observeUserProfile error:", error);
+        setProfileError("No fue posible cargar tu perfil docente.");
         setProfileLoading(false);
       },
     );
-
     return () => {
       unsubscribe();
     };
-  }, [user?.uid]);
+  }, [user]);
 
   useEffect(() => {
-    if (!user || profileLoading || profile || !user.email) {
+    if (!user) {
+      setTeacherProfile(null);
+      setTeacherProfileLoading(false);
+      setTeacherProfileError(null);
       return;
     }
-    void ensureUserProfile(user.uid, user.email).catch((error: unknown) => {
-      console.error("[SASE-310] Sincronizacion de perfil docente fallida:", error);
-      setProfileError(
-        error instanceof Error ? error.message : "No fue posible sincronizar tu perfil docente.",
-      );
-    });
-  }, [user, profile, profileLoading]);
+    setTeacherProfileLoading(true);
+    setTeacherProfileError(null);
+    const unsubscribe = observeTeacherProfile(
+      user.uid,
+      (nextProfile) => {
+        setTeacherProfile(nextProfile);
+        setTeacherProfileLoading(false);
+      },
+      (error) => {
+        console.error("[SASE-310] observeTeacherProfile error:", error);
+        setTeacherProfileError("No fue posible cargar tus datos docentes.");
+        setTeacherProfileLoading(false);
+      },
+    );
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
 
-  const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setAuthError(null);
-    setAuthInfo(null);
-    setAuthSubmitting(true);
-
-    const normalizedEmail = authForm.email.trim().toLowerCase();
-    const { password } = authForm;
-
-    if (authMode === "register" && !INSTITUTIONAL_EMAIL_REGEX.test(normalizedEmail)) {
-      setAuthSubmitting(false);
-      setAuthError("El registro docente solo acepta correos @institucion.mx.");
-      return;
-    }
-
-    try {
-      if (authMode === "login") {
-        const account = await loginUser(normalizedEmail, password);
-        await ensureUserProfile(account.uid, account.email ?? normalizedEmail);
-      } else {
-        const account = await registerUser(normalizedEmail, password);
-        await ensureUserProfile(account.uid, account.email ?? normalizedEmail);
-        setAuthInfo("Registro enviado. Un administrador revisara tu solicitud y te notificara al autorizarte.");
-      }
-      setAuthForm(emptyAuthForm);
-    } catch (error) {
-      console.error("[SASE-310] Auth action failed:", error);
-      setAuthError(error instanceof Error ? error.message : "Ocurrio un error de autenticacion.");
-    } finally {
-      setAuthSubmitting(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    setAuthError(null);
-    setAuthInfo(null);
-    setProfileError(null);
-    setAuthSubmitting(true);
-    try {
-      await logoutUser();
-    } catch (error) {
-      console.error("[SASE-310] Logout failed:", error);
-      setAuthError("No fue posible cerrar la sesion. Revisa tu conexion.");
-    } finally {
-      setAuthSubmitting(false);
-    }
-  };
+  const handleReportInputChange =
+    (field: keyof ReportFormState) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setReportError(null);
+      setReportSuccess(null);
+      setReportForm((prev) => ({ ...prev, [field]: event.target.value }));
+    };
 
   const handleCreateReport = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user) {
-      setReportError("Necesitas iniciar sesion para crear reportes.");
+      setReportError("Debes iniciar sesiÃƒÂ³n para crear un reporte.");
       return;
     }
-
     if (!isAuthorized) {
-      setReportError("Tu cuenta docente aun no ha sido autorizada para crear reportes.");
+      setReportError("Tu cuenta aun no ha sido autorizada.");
       return;
     }
 
     setReportSubmitting(true);
-    clearReportFeedback();
-
+    setReportError(null);
+    setReportSuccess(null);
     try {
       const payload: ReportInput = {
         title: reportForm.title.trim(),
@@ -216,77 +311,84 @@ const Sase310Module: React.FC = () => {
         date: reportForm.date.trim(),
         uid: user.uid,
       };
-      await createReport(payload);
-      setReportSuccess("Reporte creado correctamente.");
+      const ownerMeta = {
+        name: profile?.nombreCompleto ?? teacherProfile?.nombre ?? null,
+        email: user.email ?? null,
+        role: profile?.rol ?? null,
+      };
+      await createReport(payload, ownerMeta);
       setReportForm({ ...emptyReportForm, category: payload.category });
+      setReportSuccess("Reporte creado correctamente.");
       await fetchReports();
     } catch (error) {
-      console.error("[SASE-310] Report creation failed:", error);
-      setReportError(error instanceof Error ? error.message : "No se pudo crear el reporte. Intenta mas tarde.");
+      console.error("[SASE-310] Create report failed:", error);
+      setReportError(error instanceof Error ? error.message : "No fue posible crear el reporte.");
     } finally {
       setReportSubmitting(false);
     }
   };
 
   const handleDeleteReport = async (reportId: string) => {
-    if (isBusy) {
-      return;
-    }
-
-    if (!user || !isAuthorized) {
-      setReportError("No cuentas con permisos para eliminar reportes.");
-      return;
-    }
-
     setReportSubmitting(true);
-    clearReportFeedback();
-
+    setReportError(null);
+    setReportSuccess(null);
     try {
       await deleteReport(reportId);
       setReportSuccess("Reporte eliminado.");
       await fetchReports();
     } catch (error) {
-      console.error("[SASE-310] Report deletion failed:", error);
-      setReportError("No se pudo eliminar el reporte. Intenta mas tarde.");
+      console.error("[SASE-310] Delete report failed:", error);
+      setReportError("No fue posible eliminar el reporte.");
     } finally {
       setReportSubmitting(false);
     }
   };
 
-  const renderAuthForm = () => (
-    <div className="card">
-      <header className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-display">Acceso Docente SASE-310</h2>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className={`btn ${authMode === "login" ? "btn-primary" : "btn-secondary"}`}
-            onClick={() => handleAuthModeChange("login")}
-            disabled={isBusy}
-          >
-            Iniciar sesion
-          </button>
-          <button
-            type="button"
-            className={`btn ${authMode === "register" ? "btn-primary" : "btn-secondary"}`}
-            onClick={() => handleAuthModeChange("register")}
-            disabled={isBusy}
-          >
-            Registrar
-          </button>
-        </div>
+  const renderChooser = () => (
+    <section className="card space-y-4">
+      <header>
+        <h2 className="text-xl font-display text-white">SASE-310 Piloto</h2>
+        <p className="text-sm text-gray-400">Elige cÃƒÂ³mo deseas continuar.</p>
       </header>
+      <div className="flex flex-col gap-3 md:flex-row md:gap-4">
+        <button
+          type="button"
+          className="btn btn-primary w-full"
+          onClick={() => handleSelectStep("login")}
+          disabled={isBusy}
+        >
+          Ingresar con correo y contrasena
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary w-full"
+          onClick={() => handleSelectStep("register")}
+          disabled={isBusy}
+        >
+          Registrate (preregistro)
+        </button>
+      </div>
+    </section>
+  );
 
-      <form onSubmit={handleAuthSubmit} className="space-y-4">
+  const renderLoginForm = () => (
+    <section className="card space-y-4">
+      <header className="space-y-2">
+        <h2 className="text-xl font-display text-white">Ingresar</h2>
+        <p className="text-sm text-gray-400">
+          Usa tu correo institucional u oficial. Si no tienes cuenta, vuelve y elige la opciÃƒÂ³n de preregistro.
+        </p>
+      </header>
+      <form onSubmit={handleLoginSubmit} className="space-y-4">
         <div>
-          <label className="block mb-1 text-sm text-gray-300" htmlFor="sase-auth-email">
-            Correo institucional
+          <label className="block mb-1 text-sm text-gray-300" htmlFor="login-email">
+            Correo
           </label>
           <input
-            id="sase-auth-email"
+            id="login-email"
             type="email"
             className="input-field w-full"
-            placeholder="docente@institucion.mx"
+            placeholder="ej. docente@aefcm.gob.mx"
             value={authForm.email}
             onChange={handleAuthInputChange("email")}
             disabled={isBusy}
@@ -294,44 +396,57 @@ const Sase310Module: React.FC = () => {
             autoComplete="email"
           />
         </div>
-
         <div>
-          <label className="block mb-1 text-sm text-gray-300" htmlFor="sase-auth-password">
+          <label className="block mb-1 text-sm text-gray-300" htmlFor="login-password">
             Contrasena
           </label>
           <input
-            id="sase-auth-password"
+            id="login-password"
             type="password"
             className="input-field w-full"
-            placeholder="Tu contrasena segura"
+            placeholder="Tu contrasena"
             value={authForm.password}
             onChange={handleAuthInputChange("password")}
             disabled={isBusy}
             required
-            autoComplete={authMode === "login" ? "current-password" : "new-password"}
+            autoComplete="current-password"
           />
         </div>
-
         {authError ? <p className="text-sm text-red-400">{authError}</p> : null}
-        {authInfo ? <p className="text-sm text-emerald-400">{authInfo}</p> : null}
-
-        <button
-          type="submit"
-          className="btn btn-primary w-full"
-          disabled={isBusy || !authForm.email || !authForm.password}
-        >
-          {authSubmitting ? "Procesando..." : authMode === "login" ? "Entrar" : "Crear cuenta"}
-        </button>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <button type="button" className="btn btn-secondary md:w-auto w-full" onClick={() => handleSelectStep("chooser")}>
+            Volver
+          </button>
+          <button type="submit" className="btn btn-primary md:w-auto w-full" disabled={isBusy || !authForm.email || !authForm.password}>
+            {authSubmitting ? "Ingresando..." : "Ingresar"}
+          </button>
+        </div>
       </form>
+    </section>
+  );
 
-      {authLoading ? (
-        <p className="text-xs text-gray-400 mt-4">Sincronizando sesion...</p>
-      ) : (
-        <p className="text-xs text-gray-500 mt-4">
-          Accede con tu correo docente para gestionar reportes vinculados a estudiantes.
+  const renderRegisterForm = () => (
+    <section className="card space-y-5">
+      <header className="space-y-2">
+        <h2 className="text-xl font-display text-white">Registro con lista blanca</h2>
+        <p className="text-sm text-gray-400">
+          Validamos tu nombre contra la plantilla autorizada. Si coincide y no se ha usado, tu cuenta queda activa de inmediato.
         </p>
-      )}
-    </div>
+      </header>
+      <RegisterForm
+        values={registerForm}
+        submitting={authSubmitting}
+        serverError={authError}
+        isEmailValid={isRegisterEmailValid}
+        onChange={handleRegisterFieldChange}
+        onSubmit={handleRegisterSubmit}
+        onCancel={() => handleSelectStep("chooser")}
+      />
+      {authInfo ? <p className="text-sm text-emerald-400">{authInfo}</p> : null}
+      <p className="text-xs text-gray-500">
+        La lista blanca se gestiona desde Firestore. Cada docente cuenta con un unico acceso asignado.
+      </p>
+    </section>
   );
 
   const renderProfileLoading = () => (
@@ -347,76 +462,73 @@ const Sase310Module: React.FC = () => {
       <div className="card">
         <h3 className="text-lg font-display mb-2">No fue posible cargar tu perfil docente</h3>
         <p className="text-sm text-red-400">{profileError}</p>
-        <p className="text-xs text-gray-500 mt-3">
-          Si el problema persiste, contacta al administrador para confirmar tu registro.
-        </p>
+        <p className="text-xs text-gray-500 mt-3">Intenta cerrar sesiÃƒÂ³n y volver a ingresar.</p>
       </div>
       <div className="card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <p className="text-sm text-gray-400">Puedes cerrar sesion e intentarlo mas tarde.</p>
-        <button
-          type="button"
-          className="btn btn-secondary md:w-auto w-full"
-          onClick={handleLogout}
-          disabled={isBusy}
-        >
-          {authSubmitting ? "Cerrando sesion..." : "Cerrar sesion"}
+        <p className="text-sm text-gray-400">Puedes volver al menÃƒÂº principal si lo prefieres.</p>
+        <button type="button" className="btn btn-secondary md:w-auto w-full" onClick={handleLogout} disabled={isBusy}>
+          Cerrar sesiÃƒÂ³n
         </button>
       </div>
     </section>
   );
 
-  const renderProfileUnavailable = () => (
+  const renderTeacherProfileMissing = () => (
     <section className="space-y-6">
-      <div className="card">
-        <h3 className="text-lg font-display mb-2">Perfil docente en preparación</h3>
+      <div className="card space-y-4">
+        <h3 className="text-lg font-display text-white">Completa tus datos docentes</h3>
         <p className="text-sm text-gray-400">
-          Estamos sincronizando tu registro con el sistema de reportes. Recarga la pagina en unos momentos.
+          Antes de continuar necesitamos tu nombre, plantel y extensiÃƒÂ³n para asociar reportes correctamente.
         </p>
-      </div>
-      <div className="card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <p className="text-sm text-gray-400">Si ya paso un tiempo considerable, avisa a tu administrador.</p>
-        <button
-          type="button"
-          className="btn btn-secondary md:w-auto w-full"
-          onClick={handleLogout}
-          disabled={isBusy}
-        >
-          {authSubmitting ? "Cerrando sesion..." : "Cerrar sesion"}
-        </button>
+        <TeacherProfileForm
+          defaultValues={teacherProfile ?? undefined}
+          submitting={teacherProfileSubmitting}
+          serverError={teacherProfileError}
+          submitLabel="Guardar datos docentes"
+          onSubmit={async (data) => {
+            if (!user) {
+              setTeacherProfileError("Sesion expirada. Vuelve a ingresar.");
+              return;
+            }
+            setTeacherProfileSubmitting(true);
+            setTeacherProfileError(null);
+            try {
+              await saveTeacherProfile(user.uid, {
+                nombre: data.nombre.trim(),
+                plantel: data.plantel.trim(),
+              });
+              window.alert("Datos docentes actualizados. Espera la autorizacion.");
+              await logoutUser();
+              onNavigateHome?.();
+            } catch (error) {
+              console.error("[SASE-310] Save teacher profile failed:", error);
+              setTeacherProfileError("No fue posible guardar tus datos docentes.");
+            } finally {
+              setTeacherProfileSubmitting(false);
+            }
+          }}
+        />
       </div>
     </section>
   );
 
   const renderPendingAuthorization = () => (
-    <section className="space-y-6">
-      <div className="card">
-        <h3 className="text-lg font-display mb-2">Tu cuenta esta en revisión</h3>
-        <p className="text-sm text-gray-400">
-          Recibimos tu solicitud. Un administrador validara tu correo institucional antes de habilitar el acceso.
+    <section className="card space-y-4">
+      <h3 className="text-lg font-display text-white">Preregistro recibido</h3>
+      <p className="text-sm text-gray-400">
+        Tu cuenta estÃƒÂ¡ en proceso de autorizaciÃƒÂ³n. RecibirÃƒÂ¡s la notificaciÃƒÂ³n cuando puedas ingresar al mÃƒÂ³dulo.
+      </p>
+      <div className="rounded-md border border-gray-800 bg-black/20 p-3 text-xs text-gray-300 space-y-1">
+        <p>
+          <span className="font-semibold text-white">Correo:</span> {user?.email ?? "Sin correo"}
         </p>
-        <div className="mt-4 text-xs text-gray-500 space-y-1">
-          <p>
-            <span className="font-semibold text-white">Correo:</span> {user?.email ?? "Sin correo"}
-          </p>
-          <p>
-            <span className="font-semibold text-white">Rol asignado:</span> {profile?.rol ?? "docente"}
-          </p>
-        </div>
-        {authInfo ? <p className="text-sm text-emerald-400 mt-4">{authInfo}</p> : null}
-      </div>
-      <div className="card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <p className="text-sm text-gray-400">
-          Te notificaremos en cuanto tu cuenta quede autorizada. Puedes cerrar sesion y regresar mas tarde.
+        <p>
+          <span className="font-semibold text-white">Rol asignado:</span> {profile?.rol ?? "docente"}
         </p>
-        <button
-          type="button"
-          className="btn btn-secondary md:w-auto w-full"
-          onClick={handleLogout}
-          disabled={isBusy}
-        >
-          {authSubmitting ? "Cerrando sesion..." : "Cerrar sesion"}
-        </button>
       </div>
+      <button type="button" className="btn btn-secondary w-full" onClick={handleLogout} disabled={isBusy}>
+        Volver al menÃƒÂº
+      </button>
     </section>
   );
 
@@ -424,18 +536,28 @@ const Sase310Module: React.FC = () => {
     <header className="card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
         <h2 className="text-xl font-display text-[var(--accent-1)]">SASE-310 Reportes</h2>
-        <p className="text-sm text-gray-400">
-          Gestiona reportes vinculados a tu cuenta de Firebase Authentication.
-        </p>
+        <p className="text-sm text-gray-400">Gestiona reportes vinculados a tu cuenta docente.</p>
       </div>
       <div className="flex flex-col items-start gap-2 md:items-end">
         <div className="text-sm text-gray-300">
           <span className="font-semibold text-white">{user?.email ?? "Sin correo"}</span>
-          <span className="block text-xs text-gray-500">Rol: {profile?.rol ?? "Sin rol"}</span>
+          <span className="block text-xs text-gray-500">Rol: {profile?.rol ?? "docente"}</span>
         </div>
-        <button type="button" className="btn btn-secondary" onClick={handleLogout} disabled={isBusy}>
-          {authSubmitting ? "Cerrando sesion..." : "Cerrar sesion"}
-        </button>
+        <div className="flex flex-col gap-2 md:flex-row">
+          <button type="button" className="btn btn-secondary" onClick={handleLogout} disabled={isBusy}>
+            {authSubmitting ? "Cerrando sesiÃƒÂ³n..." : "Cerrar sesiÃƒÂ³n"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              onNavigateHome?.();
+            }}
+            disabled={isBusy}
+          >
+            Volver al menÃƒÂº
+          </button>
+        </div>
       </div>
     </header>
   );
@@ -445,50 +567,48 @@ const Sase310Module: React.FC = () => {
       <h3 className="text-lg font-display mb-4">Crear nuevo reporte</h3>
       <form onSubmit={handleCreateReport} className="space-y-4">
         <div>
-          <label className="block mb-1 text-sm text-gray-300" htmlFor="sase-report-title">
-            Titulo del reporte
+          <label className="block mb-1 text-sm text-gray-300" htmlFor="report-title">
+            TÃƒÂ­tulo
           </label>
           <input
-            id="sase-report-title"
+            id="report-title"
             type="text"
             className="input-field w-full"
-            placeholder="Ej. Seguimiento de clase SASE-310"
+            placeholder="Ej. Seguimiento de clase"
             value={reportForm.title}
             onChange={handleReportInputChange("title")}
             disabled={isBusy}
             required
           />
         </div>
-
         <div>
-          <label className="block mb-1 text-sm text-gray-300" htmlFor="sase-report-description">
-            Descripcion
+          <label className="block mb-1 text-sm text-gray-300" htmlFor="report-description">
+            DescripciÃƒÂ³n
           </label>
           <textarea
-            id="sase-report-description"
+            id="report-description"
             className="input-field w-full h-32"
-            placeholder="Describe hallazgos, acuerdos y acciones del reporte."
+            placeholder="Describe la situaciÃƒÂ³n o seguimiento"
             value={reportForm.description}
             onChange={handleReportInputChange("description")}
             disabled={isBusy}
             required
           />
         </div>
-
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="block mb-1 text-sm text-gray-300" htmlFor="sase-report-category">
-              Categoria
+            <label className="block mb-1 text-sm text-gray-300" htmlFor="report-category">
+              CategorÃƒÂ­a
             </label>
             <select
-              id="sase-report-category"
+              id="report-category"
               className="input-field w-full"
               value={reportForm.category}
               onChange={handleReportInputChange("category")}
               disabled={isBusy}
               required
             >
-              <option value="">Selecciona una categoria</option>
+              <option value="">Selecciona una categorÃƒÂ­a</option>
               {CATEGORIES.map((category) => (
                 <option key={category} value={category}>
                   {category}
@@ -496,13 +616,12 @@ const Sase310Module: React.FC = () => {
               ))}
             </select>
           </div>
-
           <div>
-            <label className="block mb-1 text-sm text-gray-300" htmlFor="sase-report-date">
+            <label className="block mb-1 text-sm text-gray-300" htmlFor="report-date">
               Fecha
             </label>
             <input
-              id="sase-report-date"
+              id="report-date"
               type="date"
               className="input-field w-full"
               value={reportForm.date}
@@ -512,10 +631,8 @@ const Sase310Module: React.FC = () => {
             />
           </div>
         </div>
-
         {reportError ? <p className="text-sm text-red-400">{reportError}</p> : null}
         {reportSuccess ? <p className="text-sm text-emerald-400">{reportSuccess}</p> : null}
-
         <button type="submit" className="btn btn-primary" disabled={isBusy}>
           {reportSubmitting ? "Guardando..." : "Guardar reporte"}
         </button>
@@ -531,14 +648,11 @@ const Sase310Module: React.FC = () => {
           Recargar
         </button>
       </div>
-
       {reportsLoading ? <p className="text-sm text-gray-400">Cargando reportes...</p> : null}
       {reportsError ? <p className="text-sm text-red-400">{reportsError}</p> : null}
-
       {!reportsLoading && reports.length === 0 && !reportsError ? (
-        <p className="text-sm text-gray-400">Aun no has generado reportes para SASE-310.</p>
+        <p className="text-sm text-gray-400">AÃƒÂºn no has registrado reportes.</p>
       ) : null}
-
       <ul className="space-y-3">
         {reports.map((report) => (
           <li key={report.id} className="bg-black/30 border border-gray-800 rounded-lg p-3">
@@ -546,11 +660,11 @@ const Sase310Module: React.FC = () => {
               <div>
                 <h4 className="text-base font-semibold text-white">{report.title}</h4>
                 <p className="text-xs text-gray-500">
-                  Creado: {report.createdAt.toDate().toLocaleString()} | Ultima actualizacion:{" "}
+                  Creado: {report.createdAt.toDate().toLocaleString()} | ÃƒÅ¡ltima actualizaciÃƒÂ³n:{" "}
                   {report.updatedAt.toDate().toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500">
-                  Categoria: {report.category} | Fecha de aplicacion: {report.date.toDate().toLocaleDateString()}
+                  CategorÃƒÂ­a: {report.category} | Fecha de aplicaciÃƒÂ³n: {report.date.toDate().toLocaleDateString()}
                 </p>
               </div>
               <button
@@ -570,19 +684,16 @@ const Sase310Module: React.FC = () => {
   );
 
   if (!user) {
-    return (
-      <section className="space-y-6">
-        {renderAuthForm()}
-        <div className="card">
-          <p className="text-sm text-gray-400">
-            Una vez autenticado podras crear reportes y vincularlos automaticamente con tu cuenta docente.
-          </p>
-        </div>
-      </section>
-    );
+    if (authStep === "login") {
+      return renderLoginForm();
+    }
+    if (authStep === "register") {
+      return renderRegisterForm();
+    }
+    return renderChooser();
   }
 
-  if (profileLoading) {
+  if (profileLoading || teacherProfileLoading) {
     return renderProfileLoading();
   }
 
@@ -590,8 +701,8 @@ const Sase310Module: React.FC = () => {
     return renderProfileError();
   }
 
-  if (!profile) {
-    return renderProfileUnavailable();
+  if (!teacherProfile) {
+    return renderTeacherProfileMissing();
   }
 
   if (!isAuthorized) {

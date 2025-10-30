@@ -15,5 +15,15 @@ service cloud.firestore {
       // ✅ Actualización permitida solo a admin/dirección
       allow update: if request.auth.token.role in ['admin', 'direccion'];
     }
+
+    match /docentes/{uid} {
+      // ✅ El propio docente puede leer sus datos; admin/dirección supervisan
+      allow read: if request.auth.uid == uid ||
+                   request.auth.token.role in ['admin', 'direccion'];
+
+      // ✅ El docente puede crear y actualizar su ficha
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && request.auth.uid == uid;
+    }
   }
 }

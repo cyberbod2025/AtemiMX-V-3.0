@@ -8,6 +8,8 @@ import {
   Timestamp,
   updateDoc,
   where,
+  type DocumentData,
+  type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { ZodError } from "zod";
 
@@ -31,11 +33,20 @@ export interface Report {
   date: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  ownerRole: string | null;
 }
 
 type ReportRecord = Omit<Report, "id">;
 
 export type { ReportInput } from "./validation/reportSchema";
+
+export interface ReportOwnerMeta {
+  name?: string | null;
+  email?: string | null;
+  role?: string | null;
+}
 
 const reportUpdateSchema = reportInputSchema.omit({ uid: true }).partial();
 
@@ -76,7 +87,12 @@ const validateReportUpdate = (data: ReportUpdate): ReportUpdate => {
 
 const toTimestamp = (value: string): Timestamp => Timestamp.fromDate(new Date(value));
 
-export const createReport = async (data: ReportInput): Promise<Report> => {
+const normalizeMeta = (value: string | null | undefined): string | null => {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : null;
+};
+
+export const createReport = async (data: ReportInput, owner?: ReportOwnerMeta): Promise<Report> => {
   const validated = validateReportInput(data);
   const now = Timestamp.now();
 
@@ -89,6 +105,9 @@ export const createReport = async (data: ReportInput): Promise<Report> => {
     date: toTimestamp(validated.date),
     createdAt: now,
     updatedAt: now,
+    ownerName: normalizeMeta(owner?.name) ?? null,
+    ownerEmail: normalizeMeta(owner?.email?.toLowerCase()) ?? null,
+    ownerRole: normalizeMeta(owner?.role) ?? null,
   };
 
   try {
@@ -103,22 +122,46 @@ export const createReport = async (data: ReportInput): Promise<Report> => {
   }
 };
 
+const mapReportSnapshot = (reportDoc: QueryDocumentSnapshot<DocumentData>): Report => {
+  const data = reportDoc.data() as Partial<ReportRecord>;
+  return {
+    id: reportDoc.id,
+    uid: data?.uid ?? "",
+    title: data?.title ?? "",
+    description: data?.description ?? "",
+    category: data?.category ?? "",
+    date: (data?.date as Timestamp) ?? Timestamp.now(),
+    createdAt: (data?.createdAt as Timestamp) ?? Timestamp.now(),
+    updatedAt: (data?.updatedAt as Timestamp) ?? Timestamp.now(),
+    ownerName: (data?.ownerName as string | null | undefined) ?? null,
+    ownerEmail: (data?.ownerEmail as string | null | undefined) ?? null,
+    ownerRole: (data?.ownerRole as string | null | undefined) ?? null,
+  };
+};
+
 export const getReportsByUser = async (uid: User["id"]): Promise<Report[]> => {
   try {
     const reportsRef = collection(db, REPORTS_COLLECTION);
     const userReportsQuery = query(reportsRef, where("uid", "==", uid));
     const snapshot = await getDocs(userReportsQuery);
 
-    return snapshot.docs.map((reportDoc) => {
-      const reportData = reportDoc.data() as ReportRecord;
-      return {
-        id: reportDoc.id,
-        ...reportData,
-      };
-    });
+    const reports = snapshot.docs.map(mapReportSnapshot);
+    return reports.sort((a, b) => b.updatedAt.toMillis() - a.updatedAt.toMillis());
   } catch (error) {
     console.error("[Firestore] Failed to fetch reports for user:", error);
     throw new Error("No se pudieron obtener los reportes del usuario.");
+  }
+};
+
+export const getAllReports = async (): Promise<Report[]> => {
+  try {
+    const reportsRef = collection(db, REPORTS_COLLECTION);
+    const snapshot = await getDocs(reportsRef);
+    const reports = snapshot.docs.map(mapReportSnapshot);
+    return reports.sort((a, b) => b.updatedAt.toMillis() - a.updatedAt.toMillis());
+  } catch (error) {
+    console.error("[Firestore] Failed to fetch all reports:", error);
+    throw new Error("No se pudieron obtener los reportes registrados.");
   }
 };
 

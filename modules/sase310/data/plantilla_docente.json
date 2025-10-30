@@ -1,0 +1,236 @@
+[
+  {
+    "nombre_completo": "MARIA DEL SOCORRO VILLARROJO",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "GERMAN CORTES BAISABAL",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "IRMA MARQUEZ RAMIREZ",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "LUIS LEGARIA GORDILLO",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "HUGO SANCHEZ RESENDIZ",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "admin"
+  },
+  {
+    "nombre_completo": "MARISOL BERNAL ESTRADA",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "HANS EDSON URBANO LOPEZ",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "JUAN ANTONIO CORTES ROJAS",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "BRENDA DIAZ VILLANUEVA",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "PEDRO ELFEGO SANTIAGO",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "PABLO RIVERA GARCIA",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "KARLA ISABEL REYES COSME",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "BALTAZAR TABAREZ C",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "ELIZABETH ECHEVARRIA G",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "HERNANDEZ MARCOS PEDRO",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "JAIRO DAVID CORTES S",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "FERMIN ANTONIO MARIN",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "INGRID ROBLEDO",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "NORMA PATRICIA GUERRERO O",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "JUAN JOSE HURTADO MARIN",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "VICENTE RAMIREZ SILVA",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "RUTH MORALES",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "DIANA GUTIERREZ",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "VICTOR FLORES",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "MIGUEL ARELLANO SANTOYO",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "NOE MOTA CANO",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "CLAUDIA ANDRADE",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "YOSELIN MARQUEZ",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "JORGE ALBERTO FLORES SILVA",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "ORALIA RIVERA",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "EDUARDO CAMPOS",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "MARIA ELENA DIAZ",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "ROCIO AZUCENO",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "docente"
+  },
+  {
+    "nombre_completo": "MARTHA",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "orientacion"
+  },
+  {
+    "nombre_completo": "SILVIA",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "orientacion"
+  },
+  {
+    "nombre_completo": "NORMA XOLALPA",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "orientacion"
+  },
+  {
+    "nombre_completo": "MIGUEL ANGEL SANDOVAL",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "directivo"
+  },
+  {
+    "nombre_completo": "PABLO NERIA",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "directivo"
+  },
+  {
+    "nombre_completo": "JOSE LUIS LOPEZ QUERO",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "directivo"
+  }
+]

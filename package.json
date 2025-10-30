@@ -12,9 +12,12 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.9.0",
     "firebase": "^11.10.0",
+    "lucide-react": "^0.548.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-hook-form": "^7.53.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
