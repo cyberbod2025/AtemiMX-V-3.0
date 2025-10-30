@@ -43,6 +43,10 @@ const mapAuthError = (error: unknown): string => {
         return "Se detectaron multiples intentos fallidos. Intenta mas tarde.";
       case "auth/network-request-failed":
         return "No se pudo establecer conexion con el servicio de autenticacion.";
+      case "auth/configuration-not-found":
+        return "La configuracion de autenticacion no esta disponible. Verifica las credenciales de Firebase.";
+      case "auth/internal-error":
+        return "El servicio de autenticacion respondio con un error interno. Intenta nuevamente.";
       default:
         return "Ocurrio un error al procesar la solicitud de autenticacion.";
     }
