@@ -5,14 +5,14 @@
  * - Normaliza reportes recién creados y genera folios consecutivos.
  */
 
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
 const { logger } = functions;
-
-functions.setGlobalOptions({ maxInstances: 10 });
-
-admin.initializeApp();
 
 const db = admin.firestore();
 const auth = admin.auth();
