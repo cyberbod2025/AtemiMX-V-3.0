@@ -50,6 +50,23 @@ const ROLE_ALIASES = {
 const VALID_ROLES = new Set(["admin", "teacher", "prefect", "guidance", "medical", "socialWork", "clerk", "pending"]);
 const DEFAULT_ROLE = "pending";
 
+const REPORT_SCHEMA_VERSION = "1.0.0";
+const REPORT_SCHEMA_PATH = "schemas/reportes.json";
+
+const CATEGORY_CANONICAL = {
+  seguimiento: "Seguimiento",
+  incidencia: "Incidencia",
+  planeacion: "Planeacion",
+  otro: "Otro",
+};
+
+const ORIENTATION_CATEGORIES = new Set(["seguimiento", "incidencia"]);
+
+const ORIENTATION_PRIORITY = {
+  seguimiento: "media",
+  incidencia: "alta",
+};
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const normalizeRole = (value) => {
@@ -250,3 +267,213 @@ exports.logSensitiveAccess = functions.https.onCall(async (data, context) => {
     timestamp: now.toDate().toISOString(),
   };
 });
+
+const normalizeCategory = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim().toLowerCase();
+  return CATEGORY_CANONICAL[trimmed] ?? null;
+};
+
+const buildReportSchema = () => ({
+  version: REPORT_SCHEMA_VERSION,
+  description: "Esquema base para reportes SASE-310.",
+  required: ["uid", "title", "description", "category", "date"],
+  properties: {
+    uid: { type: "string", minLength: 1 },
+    title: { type: "string", minLength: 3, maxLength: 120 },
+    description: { type: "string", minLength: 10, maxLength: 2000 },
+    category: { type: "string", enum: Object.values(CATEGORY_CANONICAL) },
+    date: { type: "timestamp" },
+    ownerName: { type: ["string", "null"] },
+    ownerEmail: { type: ["string", "null"] },
+    ownerRole: { type: ["string", "null"] },
+    folio: { type: "string" },
+    createdAt: { type: "timestamp" },
+    updatedAt: { type: "timestamp" },
+  },
+});
+
+const ensureSchemaFile = async () => {
+  const bucket = admin.storage().bucket();
+  const file = bucket.file(REPORT_SCHEMA_PATH);
+  const schemaContent = JSON.stringify(buildReportSchema(), null, 2);
+
+  try {
+    const [exists] = await file.exists();
+    if (exists) {
+      const [buffer] = await file.download();
+      if (buffer.toString("utf8") === schemaContent) {
+        return false;
+      }
+    }
+
+    await file.save(schemaContent, {
+      contentType: "application/json",
+      resumable: false,
+    });
+    logger.info("Esquema de reportes actualizado en storage", { path: REPORT_SCHEMA_PATH });
+    return true;
+  } catch (error) {
+    logger.error("No fue posible actualizar el esquema de reportes en storage", { error });
+    return false;
+  }
+};
+
+const validateReportPayload = (data) => {
+  const issues = [];
+
+  const ensureString = (value, field, { min = 1, max = 2000 } = {}) => {
+    if (typeof value !== "string") {
+      issues.push(`${field} debe ser texto`);
+      return null;
+    }
+    const trimmed = value.trim();
+    if (trimmed.length < min) {
+      issues.push(`${field} debe tener al menos ${min} caracteres`);
+      return null;
+    }
+    if (trimmed.length > max) {
+      issues.push(`${field} excede el maximo de ${max} caracteres`);
+      return trimmed.slice(0, max);
+    }
+    return trimmed;
+  };
+
+  const resolveDate = (value) => {
+    if (value instanceof admin.firestore.Timestamp) {
+      return value;
+    }
+    if (value && typeof value.toDate === "function") {
+      return value;
+    }
+    if (typeof value === "string") {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return admin.firestore.Timestamp.fromDate(parsed);
+      }
+    }
+    issues.push("date debe ser una fecha valida");
+    return null;
+  };
+
+  const uid = ensureString(data?.uid, "uid");
+  const title = ensureString(data?.title, "title", { min: 3, max: 120 });
+  const description = ensureString(data?.description, "description", { min: 10, max: 2000 });
+  const category = normalizeCategory(data?.category);
+  if (!category) {
+    issues.push("category no pertenece al catalogo permitido");
+  }
+  const date = resolveDate(data?.date);
+
+  if (issues.length > 0) {
+    const message = issues.join("; ");
+    throw new Error(message);
+  }
+
+  return {
+    uid,
+    title,
+    description,
+    category,
+    date,
+    ownerName: typeof data?.ownerName === "string" ? data.ownerName.trim() : null,
+    ownerEmail: typeof data?.ownerEmail === "string" ? data.ownerEmail.trim().toLowerCase() : null,
+    ownerRole: typeof data?.ownerRole === "string" ? data.ownerRole.trim() : null,
+  };
+};
+
+exports.validateReporte = functions.firestore
+  .document(`${REPORTS_COLLECTION}/{reportId}`)
+  .onCreate(async (snapshot, context) => {
+    const data = snapshot.data();
+    const reportId = context.params.reportId;
+
+    if (!data) {
+      logger.warn("Reporte sin datos en validateReporte", { reportId });
+      return;
+    }
+
+    const now = admin.firestore.Timestamp.now();
+
+    try {
+      const sanitized = validateReportPayload(data);
+      await ensureSchemaFile();
+      await db.collection(BITACORA_COLLECTION).add({
+        entidad: "reporte",
+        entidadId: reportId,
+        accion: "VALIDACION",
+        realizadoPor: sanitized.uid,
+        detalle: `Reporte validado contra el esquema ${REPORT_SCHEMA_VERSION}`,
+        timestamp: now,
+        checksum: `${reportId}:validation`,
+      });
+      logger.info("Reporte validado correctamente", { reportId });
+    } catch (error) {
+      logger.error("Reporte no valido detectado", { reportId, error: error instanceof Error ? error.message : error });
+      await db.collection(BITACORA_COLLECTION).add({
+        entidad: "reporte",
+        entidadId: reportId,
+        accion: "VALIDACION_FALLIDA",
+        realizadoPor: data?.uid ?? null,
+        detalle: `Validacion fallida: ${error instanceof Error ? error.message : "sin detalle"}`,
+        timestamp: now,
+        checksum: `${reportId}:validation:error`,
+      });
+    }
+  });
+
+exports.notifyOrientacion = functions.firestore
+  .document(`${REPORTS_COLLECTION}/{reportId}`)
+  .onCreate(async (snapshot, context) => {
+    const data = snapshot.data();
+    const reportId = context.params.reportId;
+
+    if (!data) {
+      logger.warn("Reporte sin datos en notifyOrientacion", { reportId });
+      return;
+    }
+
+    const normalizedCategoryKey = typeof data.category === "string" ? data.category.trim().toLowerCase() : "";
+    if (!ORIENTATION_CATEGORIES.has(normalizedCategoryKey)) {
+      logger.debug("Reporte sin notificacion obligatoria", { reportId, category: data.category });
+      return;
+    }
+
+    const now = admin.firestore.Timestamp.now();
+    const categoryLabel = CATEGORY_CANONICAL[normalizedCategoryKey] ?? data.category ?? "Sin categoria";
+    const priority = ORIENTATION_PRIORITY[normalizedCategoryKey] ?? "media";
+
+    const notificationPayload = {
+      tipo: "orientacion",
+      reporteId: reportId,
+      categoria: categoryLabel,
+      prioridad: priority,
+      estado: "pendiente",
+      destinatarios: ["orientacion"],
+      creadoEn: now,
+      origenUid: typeof data.uid === "string" ? data.uid : null,
+      ownerName: typeof data.ownerName === "string" ? data.ownerName : null,
+      ownerEmail: typeof data.ownerEmail === "string" ? data.ownerEmail : null,
+    };
+
+    try {
+      await db.collection("notifications").add(notificationPayload);
+      await db.collection(BITACORA_COLLECTION).add({
+        entidad: "reporte",
+        entidadId: reportId,
+        accion: "NOTIFICAR",
+        realizadoPor: notificationPayload.origenUid,
+        detalle: `Notificacion a orientacion registrada (categoria ${categoryLabel}, prioridad ${priority})`,
+        timestamp: now,
+        checksum: `${reportId}:notify`,
+      });
+      logger.info("Notificacion a orientacion registrada", { reportId, category: categoryLabel });
+    } catch (error) {
+      logger.error("No se pudo registrar la notificacion a orientacion", {
+        reportId,
+        error: error instanceof Error ? error.message : error,
+      });
+    }
+  });

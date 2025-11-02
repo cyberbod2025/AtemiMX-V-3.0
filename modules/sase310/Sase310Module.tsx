@@ -39,10 +39,10 @@ interface Sase310ModuleProps {
 const EMAIL_WHITELIST_REGEX = /@institucion\.mx$/i;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{10,}$/;
 const PASSWORD_REQUIREMENTS = [
-  "• Minimo 10 caracteres.",
-  "• Incluye al menos una letra mayuscula.",
-  "• Incluye al menos una letra minuscula.",
-  "• Incluye al menos un numero."
+  "- Minimo 10 caracteres.",
+  "- Incluye al menos una letra mayuscula.",
+  "- Incluye al menos una letra minuscula.",
+  "- Incluye al menos un numero.",
 ].join("\n");
 const DEFAULT_PLANTEL = "SECUNDARIA 310 PRESIDENTES DE MEXICO";
 const CATEGORIES = ["Seguimiento", "Incidencia", "Planeacion", "Otro"];
@@ -362,7 +362,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   const handleCreateReport = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user) {
-      setReportError("Debes iniciar sesiAƒA³n para crear un reporte.");
+      setReportError("Debes iniciar sesion para crear un reporte.");
       return;
     }
     if (!isAuthorized) {
@@ -418,7 +418,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
     <section className="card space-y-4">
       <header>
         <h2 className="text-xl font-display text-white">SASE-310 Piloto</h2>
-        <p className="text-sm text-gray-400">Elige cAƒA³mo deseas continuar.</p>
+        <p className="text-sm text-gray-400">Elige como deseas continuar.</p>
       </header>
       <div className="flex flex-col gap-3 md:flex-row md:gap-4">
         <button
@@ -446,7 +446,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
       <header className="space-y-2">
         <h2 className="text-xl font-display text-white">Ingresar</h2>
         <p className="text-sm text-gray-400">
-          Usa tu correo institucional u oficial. Si no tienes cuenta, vuelve y elige la opciAƒA³n de preregistro.
+          Usa tu correo institucional u oficial. Si no tienes cuenta, vuelve y elige la opcion de preregistro.
         </p>
       </header>
       <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -533,12 +533,12 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
       <div className="card">
         <h3 className="text-lg font-display mb-2">No fue posible cargar tu perfil docente</h3>
         <p className="text-sm text-red-400">{profileError}</p>
-        <p className="text-xs text-gray-500 mt-3">Intenta cerrar sesiAƒA³n y volver a ingresar.</p>
+        <p className="text-xs text-gray-500 mt-3">Intenta cerrar sesion y volver a ingresar.</p>
       </div>
       <div className="card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <p className="text-sm text-gray-400">Puedes volver al menAƒAº principal si lo prefieres.</p>
+        <p className="text-sm text-gray-400">Puedes volver al menu principal si lo prefieres.</p>
         <button type="button" className="btn btn-secondary md:w-auto w-full" onClick={handleLogout} disabled={isBusy}>
-          Cerrar sesiAƒA³n
+          Cerrar sesion
         </button>
       </div>
     </section>
@@ -648,7 +648,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
         </div>
         <div className="flex flex-col gap-2 md:flex-row">
           <button type="button" className="btn btn-secondary" onClick={handleLogout} disabled={isBusy}>
-            {authSubmitting ? "Cerrando sesiAƒA³n..." : "Cerrar sesiAƒA³n"}
+            {authSubmitting ? "Cerrando sesion..." : "Cerrar sesion"}
           </button>
           <button
             type="button"
@@ -658,7 +658,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
             }}
             disabled={isBusy}
           >
-            Volver al menAƒAº
+            Volver al menu
           </button>
         </div>
       </div>
@@ -671,7 +671,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
       <form onSubmit={handleCreateReport} className="space-y-4">
         <div>
           <label className="block mb-1 text-sm text-gray-300" htmlFor="report-title">
-            TAƒA­tulo
+            Titulo
           </label>
           <input
             id="report-title"
@@ -686,12 +686,12 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
         </div>
         <div>
           <label className="block mb-1 text-sm text-gray-300" htmlFor="report-description">
-            DescripciAƒA³n
+            Descripcion
           </label>
           <textarea
             id="report-description"
             className="input-field w-full h-32"
-            placeholder="Describe la situaciAƒA³n o seguimiento"
+            placeholder="Describe la situacion o seguimiento"
             value={reportForm.description}
             onChange={handleReportInputChange("description")}
             disabled={isBusy}
@@ -701,7 +701,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="block mb-1 text-sm text-gray-300" htmlFor="report-category">
-              CategorAƒA­a
+              Categoria
             </label>
             <select
               id="report-category"
@@ -711,7 +711,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
               disabled={isBusy}
               required
             >
-              <option value="">Selecciona una categorAƒA­a</option>
+              <option value="">Selecciona una categoria</option>
               {CATEGORIES.map((category) => (
                 <option key={category} value={category}>
                   {category}
@@ -754,7 +754,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
       {reportsLoading ? <p className="text-sm text-gray-400">Cargando reportes...</p> : null}
       {reportsError ? <p className="text-sm text-red-400">{reportsError}</p> : null}
       {!reportsLoading && reports.length === 0 && !reportsError ? (
-        <p className="text-sm text-gray-400">AAƒAºn no has registrado reportes.</p>
+        <p className="text-sm text-gray-400">Aun no has registrado reportes.</p>
       ) : null}
       <ul className="space-y-3">
         {reports.map((report) => (
@@ -763,11 +763,11 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
               <div>
                 <h4 className="text-base font-semibold text-white">{report.title}</h4>
                 <p className="text-xs text-gray-500">
-                  Creado: {report.createdAt.toDate().toLocaleString()} | AƒA¡ltima actualizaciAƒA³n:{" "}
+                  Creado: {report.createdAt.toDate().toLocaleString()} | Ultima actualizacion:{" "}
                   {report.updatedAt.toDate().toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500">
-                  CategorAƒA­a: {report.category} | Fecha de aplicaciAƒA³n: {report.date.toDate().toLocaleDateString()}
+                  Categoria: {report.category} | Fecha de aplicacion: {report.date.toDate().toLocaleDateString()}
                 </p>
               </div>
               <button
