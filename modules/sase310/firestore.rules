@@ -1,29 +1,101 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.role != null;
+    }
+
+    function hasRole(role) {
+      return signedIn() && request.auth.token.role == role;
+    }
+
+    function hasAnyRole(roles) {
+      return signedIn() && roles.hasAny([request.auth.token.role]);
+    }
+
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    function isSelf(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isReportOwner(data) {
+      return request.auth != null && data.uid == request.auth.uid;
+    }
 
     match /users/{uid} {
-      // ✅ Un usuario puede leer su propio documento,
-      // o un admin/dirección puede leer cualquiera.
-      allow read: if request.auth.uid == uid ||
-                   request.auth.token.role in ['admin', 'direccion'];
-
-      // ✅ Creación permitida solo a correos institucionales
-      allow create: if request.auth != null &&
-                    request.resource.data.email.matches('.*@institucion\\.mx$');
-
-      // ✅ Actualización permitida solo a admin/dirección
-      allow update: if request.auth.token.role in ['admin', 'direccion'];
+      allow get: if isSelf(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSelf(uid);
+      allow update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /docentes/{uid} {
-      // ✅ El propio docente puede leer sus datos; admin/dirección supervisan
-      allow read: if request.auth.uid == uid ||
-                   request.auth.token.role in ['admin', 'direccion'];
+      allow get: if isSelf(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSelf(uid) || isAdmin();
+      allow update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
 
-      // ✅ El docente puede crear y actualizar su ficha
-      allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null && request.auth.uid == uid;
+    match /plantilla_docente/{entryId} {
+      allow get: if isAdmin() || hasRole('pending');
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /alumnos/{alumnoId} {
+      allow get, list: if hasAnyRole(['clerk', 'guidance', 'socialWork', 'medical', 'admin']);
+      allow create, update: if hasAnyRole(['clerk', 'admin']);
+      allow delete: if isAdmin();
+    }
+
+    match /reportes/{reporteId} {
+      allow get: if isReportOwner(resource.data) || hasAnyRole(['guidance', 'socialWork', 'medical', 'admin']);
+      allow list: if hasAnyRole(['guidance', 'socialWork', 'medical', 'admin']);
+      allow create: if hasRole('teacher') && isReportOwner(request.resource.data);
+      allow update: if (hasRole('teacher') && isReportOwner(resource.data)) || hasAnyRole(['guidance', 'admin']);
+      allow delete: if isAdmin();
+    }
+
+    match /bitacora/{eventoId} {
+      allow get, list: if hasAnyRole(['guidance', 'admin']);
+      allow create: if hasAnyRole(['guidance', 'admin']);
+      allow update, delete: if isAdmin();
+    }
+
+    match /prefectura/{registroId} {
+      allow get, list: if hasAnyRole(['prefect', 'guidance', 'admin']);
+      allow create: if hasRole('prefect');
+      allow update: if hasAnyRole(['prefect', 'admin']);
+      allow delete: if isAdmin();
+    }
+
+    match /bitacora_medica/{eventoId} {
+      allow get, list: if hasAnyRole(['medical', 'admin']);
+      allow create: if hasRole('medical') || isAdmin();
+      allow update, delete: if hasRole('medical') || isAdmin();
+    }
+
+    match /bitacora_social/{eventoId} {
+      allow get, list: if hasAnyRole(['socialWork', 'admin']);
+      allow create: if hasRole('socialWork') || isAdmin();
+      allow update, delete: if hasRole('socialWork') || isAdmin();
+    }
+
+    match /bitacora_sdlc/{eventoId} {
+      allow read, write: if false;
+    }
+
+    match /_meta/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

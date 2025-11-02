@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { loginUser, logoutUser } from "../../services/authService";
 import RegisterForm, { type RegisterFormValues } from "./auth/components/RegisterForm";
+import ReauthModal from "./auth/components/ReauthModal";
 import {
   ensureUserProfile,
   observeTeacherProfile,
@@ -11,6 +12,7 @@ import {
   saveTeacherProfile,
   type TeacherProfile,
   type UserProfile,
+  ROLE_LABELS,
 } from "./auth/services/userService";
 import { createReport, deleteReport, getReportsByUser, type Report, type ReportInput } from "./firestoreService";
 
@@ -44,6 +46,12 @@ const PASSWORD_REQUIREMENTS = [
 ].join("\n");
 const DEFAULT_PLANTEL = "SECUNDARIA 310 PRESIDENTES DE MEXICO";
 const CATEGORIES = ["Seguimiento", "Incidencia", "Planeacion", "Otro"];
+const DEFAULT_ROLE: UserProfile["rol"] = "teacher";
+
+const resolveRoleLabel = (role?: UserProfile["rol"] | null): string => {
+  const key = role ?? DEFAULT_ROLE;
+  return ROLE_LABELS[key] ?? ROLE_LABELS[DEFAULT_ROLE];
+};
 
 const emptyAuthForm: AuthFormState = { email: "", password: "" };
 const emptyRegisterForm: RegisterFormState = { nombreCompleto: "", email: "", password: "" };
@@ -93,6 +101,8 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   const [teacherProfileLoading, setTeacherProfileLoading] = useState(false);
   const [teacherProfileError, setTeacherProfileError] = useState<string | null>(null);
   const [teacherProfileSubmitting, setTeacherProfileSubmitting] = useState(false);
+  const [sensitiveUnlocked, setSensitiveUnlocked] = useState(false);
+  const [reauthModalOpen, setReauthModalOpen] = useState(false);
 
   const [reports, setReports] = useState<Report[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
@@ -105,6 +115,10 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
 
   const normalizedAuthEmail = authForm.email.trim().toLowerCase();
   const normalizedRegisterEmail = registerForm.email.trim().toLowerCase();
+
+  const reauthEmail = profile?.email ?? user?.email ?? "";
+  const canTriggerReauth = reauthEmail.length > 0;
+  const auditResource = useMemo(() => (user ? `docentes/${user.uid}` : "docentes/unknown"), [user?.uid]);
 
   const isRegisterEmailValid = useMemo(() => {
     if (!normalizedRegisterEmail) {
@@ -562,12 +576,62 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
           <span className="font-semibold text-white">Correo:</span> {user?.email ?? "Sin correo"}
         </p>
         <p>
-          <span className="font-semibold text-white">Rol asignado:</span> {profile?.rol ?? "docente"}
+          <span className="font-semibold text-white">Rol asignado:</span> {resolveRoleLabel(profile?.rol)}
         </p>
       </div>
       <p className="text-xs text-gray-500">
         Te enviaremos un aviso cuando la cuenta este autorizada. Esta ventana se cerrara automaticamente.
       </p>
+    </section>
+  );
+
+  const renderSensitiveAccessCard = () => (
+    <section className="card space-y-4">
+      <header className="space-y-2">
+        <h3 className="text-lg font-display text-white">Datos protegidos</h3>
+        <p className="text-sm text-gray-400">
+          Confirma tu contrasena institucional para consultar los datos asociados a tu perfil docente.
+        </p>
+      </header>
+      {sensitiveUnlocked ? (
+        <dl className="space-y-2 text-sm text-gray-300">
+          <div className="flex flex-col">
+            <dt className="font-semibold text-white">Plantel asignado</dt>
+            <dd>{teacherProfile?.plantel ?? "Sin registro"}</dd>
+          </div>
+          <div className="flex flex-col">
+            <dt className="font-semibold text-white">Nombre oficial</dt>
+            <dd>{profile?.nombreCompleto ?? teacherProfile?.nombre ?? "Sin registro"}</dd>
+          </div>
+          <div className="flex flex-col">
+            <dt className="font-semibold text-white">Correo institucional</dt>
+            <dd>{profile?.email ?? user.email ?? "Sin correo"}</dd>
+          </div>
+          <div className="flex flex-col">
+            <dt className="font-semibold text-white">Rol operativo</dt>
+            <dd>{resolveRoleLabel(profile?.rol)}</dd>
+          </div>
+        </dl>
+      ) : (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex-1 text-sm text-gray-400">
+            La informacion sensible permanece oculta hasta validar tu identidad.
+            {!canTriggerReauth ? (
+              <p className="mt-2 text-xs text-yellow-400">
+                No detectamos un correo institucional vinculado. Solicita asistencia al administrador.
+              </p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary sm:w-auto w-full"
+            onClick={() => setReauthModalOpen(true)}
+            disabled={isBusy || !canTriggerReauth}
+          >
+            Desbloquear datos sensibles
+          </button>
+        </div>
+      )}
     </section>
   );
 
@@ -580,7 +644,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
       <div className="flex flex-col items-start gap-2 md:items-end">
         <div className="text-sm text-gray-300">
           <span className="font-semibold text-white">{user?.email ?? "Sin correo"}</span>
-          <span className="block text-xs text-gray-500">Rol: {profile?.rol ?? "docente"}</span>
+          <span className="block text-xs text-gray-500">Rol: {resolveRoleLabel(profile?.rol)}</span>
         </div>
         <div className="flex flex-col gap-2 md:flex-row">
           <button type="button" className="btn btn-secondary" onClick={handleLogout} disabled={isBusy}>
@@ -749,15 +813,34 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   }
 
   return (
-    <section className="space-y-6">
-      {renderHeader()}
-      {renderReportForm()}
-      {renderReportsList()}
-    </section>
+    <>
+      <section className="space-y-6">
+        {renderHeader()}
+        {renderSensitiveAccessCard()}
+        {renderReportForm()}
+        {renderReportsList()}
+      </section>
+      <ReauthModal
+        isOpen={reauthModalOpen && canTriggerReauth}
+        onClose={() => setReauthModalOpen(false)}
+        onReauthenticated={() => setSensitiveUnlocked(true)}
+        email={reauthEmail}
+        resource={auditResource}
+        reason="Consulta de datos sensibles del perfil docente"
+      />
+    </>
   );
 };
 
 export default Sase310Module;
+
+
+
+
+
+
+
+
 
 
 

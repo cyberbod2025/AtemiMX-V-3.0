@@ -269,9 +269,22 @@ modules/
 4. Ejecutar migración piloto con 10 reportes reales.
 5. Planificar capacitación docente + manuales de uso.
 
+### Semilla de `plantilla_docente`
+
+La colección de whitelist se inicializa con los registros del archivo `modules/sase310/data/plantilla_docente.json`. Durante la preparación del entorno:
+
+1. Asegúrate de que el proyecto local use Node 20 (`.nvmrc` y campo `engines` en `package.json`).
+2. Inicia sesión en Firebase CLI con la cuenta institucional autorizada.
+3. Importa el JSON mediante `firebase firestore:import` o el script `scripts/setup-firestore.ps1` para crear la colección `plantilla_docente` con los campos:
+   - `nombre_completo` (string, mayúsculas sin acentos)
+   - `registrado` (boolean, empieza en `false`)
+   - `uid_asociado` (string | null)
+   - `rol` (`'docente' | 'admin' | 'medical' | 'guidance' | 'socialWork' | 'prefect' | 'clerk'`)
+
+La Cloud Function de registro bloqueará cualquier duplicado marcando `registrado: true` al asociar un `uid`.
+
 ---
 
 ### Control de versiones
 
 - `2025-10-26`: Creación inicial del documento y alineación con plan de desarrollo.
-

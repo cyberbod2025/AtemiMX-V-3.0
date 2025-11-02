@@ -23,13 +23,55 @@ const USERS_COLLECTION = "users";
 const DOCENTES_COLLECTION = "docentes";
 const WHITELIST_COLLECTION = "plantilla_docente";
 
-const ROLE_VALUES = ["docente", "prefectura", "orientacion", "coordinacion", "direccion", "admin"] as const;
+const CANONICAL_ROLES = ["clerk", "teacher", "prefect", "medical", "socialWork", "guidance", "admin"] as const;
+export type UserRole = (typeof CANONICAL_ROLES)[number];
+export type AssignableRole = Exclude<UserRole, "admin">;
+
+const ROLE_ALIASES: Record<string, UserRole> = {
+  admin: "admin",
+  direccion: "admin",
+  director: "admin",
+  clerk: "clerk",
+  secretaria: "clerk",
+  secretary: "clerk",
+  teacher: "teacher",
+  docente: "teacher",
+  profesor: "teacher",
+  profesora: "teacher",
+  prefect: "prefect",
+  prefecto: "prefect",
+  prefectura: "prefect",
+  medical: "medical",
+  medico: "medical",
+  doctora: "medical",
+  socialwork: "socialWork",
+  trabajo_social: "socialWork",
+  social: "socialWork",
+  guidance: "guidance",
+  orientacion: "guidance",
+  orientadora: "guidance",
+};
+
+const resolveCanonicalRole = (value: string): UserRole => {
+  const key = value.trim().toLowerCase();
+  return ROLE_ALIASES[key] ?? "teacher";
+};
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  clerk: "Secretaria",
+  teacher: "Docente",
+  prefect: "Prefectura",
+  medical: "Servicio Medico",
+  socialWork: "Trabajo Social",
+  guidance: "Orientacion",
+  admin: "Direccion",
+};
 
 const userProfileSchema = z.object({
   email: z.string().email(),
   nombreCompleto: z.string().min(3).max(140).optional(),
   nombreNormalizado: z.string().min(3).max(140).optional(),
-  rol: z.enum(ROLE_VALUES),
+  rol: z.string().min(3).max(40),
   autorizado: z.boolean(),
   fechaRegistro: z.instanceof(Timestamp).optional(),
   autorizadoPor: z.string().nullable().optional(),
@@ -48,15 +90,13 @@ const whitelistEntrySchema = z.object({
   nombre_completo: z.string().min(3).max(140),
   registrado: z.boolean(),
   uid_asociado: z.string().nullable(),
-  rol: z.enum(ROLE_VALUES),
+  rol: z.string().min(3).max(40),
+  rol_canonico: z.string().min(3).max(40).optional(),
 });
 
-type UserProfileRecord = z.infer<typeof userProfileSchema>;
+type UserProfileRecord = Omit<z.infer<typeof userProfileSchema>, "rol"> & { rol: UserRole };
 type TeacherProfileRecord = z.infer<typeof teacherProfileSchema>;
-type WhitelistEntryRecord = z.infer<typeof whitelistEntrySchema>;
-
-export type UserRole = (typeof ROLE_VALUES)[number];
-export type AssignableRole = Exclude<UserRole, "admin">;
+type WhitelistEntryRecord = Omit<z.infer<typeof whitelistEntrySchema>, "rol" | "rol_canonico"> & { rol: UserRole };
 
 export interface UserProfile extends UserProfileRecord {
   id: string;
@@ -116,12 +156,14 @@ const parseUserDoc = (snapshot: DocumentSnapshot): UserProfile | null => {
   }
 
   const record = parsed.data;
+  const canonicalRole = resolveCanonicalRole(record.rol);
   const nombreCompleto = record.nombreCompleto ?? formatDisplayName(snapshot.get("nombre") ?? "");
   const nombreNormalizado = record.nombreNormalizado ?? normalizeFullName(nombreCompleto || record.email);
 
   return {
     id: snapshot.id,
     ...record,
+    rol: canonicalRole,
     nombreCompleto: nombreCompleto || record.email,
     nombreNormalizado,
     fechaRegistro: record.fechaRegistro ?? Timestamp.now(),
@@ -160,9 +202,14 @@ const parseWhitelistDoc = (snapshot: DocumentSnapshot): WhitelistEntry | null =>
     return null;
   }
 
+  const data = parsed.data;
+  const canonicalRole = resolveCanonicalRole(data.rol_canonico ?? data.rol);
+  const { rol_canonico: _ignoredCanon = undefined, ...rest } = data;
+
   return {
     id: snapshot.id,
-    ...parsed.data,
+    ...rest,
+    rol: canonicalRole,
   };
 };
 
@@ -239,17 +286,18 @@ export const registerUserWithWhitelist = async (payload: WhitelistRegistrationPa
       throw new Error("No fue posible validar la plantilla autorizada. Contacta al administrador.");
     }
 
-    if (whitelistEntry.registrado && whitelistEntry.uid_asociado && whitelistEntry.uid_asociado !== firebaseUser.uid) {
+    if (whitelistEntry.registrado && (!whitelistEntry.uid_asociado || whitelistEntry.uid_asociado !== firebaseUser.uid)) {
       throw new Error("Este docente ya cuenta con un registro activo.");
     }
 
     const now = Timestamp.now();
+    const canonicalRole = whitelistEntry.rol;
     const profileRecord: UserProfileRecord = {
       email: normalizedEmail,
       nombreCompleto: displayName,
       nombreNormalizado: normalizedName,
-      rol: whitelistEntry.rol,
-      autorizado: false,
+      rol: canonicalRole,
+      autorizado: true,
       fechaRegistro: now,
       autorizadoPor: null,
       plantillaDocenteId: whitelistEntry.id,
@@ -265,16 +313,17 @@ export const registerUserWithWhitelist = async (payload: WhitelistRegistrationPa
         throw new Error("La plantilla de docentes no se encuentra disponible.");
       }
 
-      if (latestEntry.registrado && latestEntry.uid_asociado && latestEntry.uid_asociado !== firebaseUser!.uid) {
+      if (latestEntry.registrado && (!latestEntry.uid_asociado || latestEntry.uid_asociado !== firebaseUser!.uid)) {
         throw new Error("Este docente ya se autorizo previamente.");
       }
 
       transaction.set(userRef, profileRecord, { merge: true });
       transaction.update(whitelistRef, {
-        registrado: false,
+        registrado: true,
         uid_asociado: firebaseUser.uid,
         correo_registrado: normalizedEmail,
         actualizado_en: now,
+        rol_canonico: canonicalRole,
       });
     });
 
