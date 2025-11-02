@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../hooks/useAuth";
 import AdminPanel from "../modules/sase310/auth/components/AdminPanel";
@@ -45,7 +45,12 @@ export const AppShell: React.FC = () => {
   const isAuthPending = loading || claimsLoading;
 
   useEffect(() => {
-    if (typeof window === "undefined" || !isAuthPending) {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (!isAuthPending) {
+      setMinSplashElapsed(true);
+      setSplashDeadlineElapsed(true);
       return;
     }
     setMinSplashElapsed(false);
@@ -88,7 +93,7 @@ export const AppShell: React.FC = () => {
       .catch((error) => {
         console.error("[UI] No fue posible recuperar los claims del usuario", error);
         if (!cancelled) {
-          setStatusMessage("No pudimos recuperar tus permisos. Intenta volver a iniciar sesión.");
+          setStatusMessage("No pudimos recuperar tus permisos. Intenta volver a iniciar sesi�n.");
         }
       })
       .finally(() => {
@@ -107,17 +112,16 @@ export const AppShell: React.FC = () => {
       return;
     }
     const currentPath = window.location.pathname;
+    if (currentPath.startsWith("/sase310/admin")) {
+      setActiveView("admin");
+      return;
+    }
     if (currentPath.startsWith("/sase310")) {
-      if (!user) {
-        setActiveView("menu");
-        window.history.replaceState({}, "", "/");
-        return;
-      }
-      if (currentPath.startsWith("/sase310/admin")) {
-        setActiveView("admin");
-        return;
-      }
       setActiveView("sase310");
+      return;
+    }
+    if (currentPath === "/") {
+      setActiveView("menu");
     }
   }, [user]);
 
@@ -138,7 +142,7 @@ export const AppShell: React.FC = () => {
   }, [isAuthPending, splashDeadlineElapsed]);
 
   useEffect(() => {
-    if (!user && activeView !== "menu") {
+    if (!user && activeView === "admin") {
       setActiveView("menu");
     }
   }, [user, activeView]);
@@ -161,7 +165,7 @@ export const AppShell: React.FC = () => {
 
   const handleSelectAdmin = () => {
     if (!isAdmin) {
-      setStatusMessage("No cuentas con permisos de administración para acceder a esta sección.");
+      setStatusMessage("No cuentas con permisos de administraci�n para acceder a esta secci�n.");
       handleSelectMenu();
       return;
     }
@@ -231,7 +235,7 @@ export const AppShell: React.FC = () => {
           <section className="card">
             <h2 className="text-lg font-display text-white">Acceso restringido</h2>
             <p className="text-sm text-gray-400">
-              Necesitas permisos de administración para ingresar a este panel.
+              Necesitas permisos de administraci�n para ingresar a este panel.
             </p>
           </section>
         );
@@ -282,5 +286,6 @@ export const AppShell: React.FC = () => {
 };
 
 export default AppShell;
+
 
 
