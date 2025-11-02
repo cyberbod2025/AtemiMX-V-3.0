@@ -477,116 +477,50 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3rem 1.5rem;
+  padding: 4rem 1.5rem;
+  background: radial-gradient(circle at 20% 20%, rgba(0, 191, 255, 0.14), transparent 52%),
+    linear-gradient(140deg, #071026, #091d32 55%, #0c2846 100%);
 }
 
-.splash-screen__content {
+.splash-screen__panel {
+  max-width: 640px;
+  width: 100%;
+  background: rgba(9, 16, 38, 0.88);
+  border-radius: 32px;
+  border: 1px solid rgba(0, 191, 255, 0.2);
+  box-shadow: 0 28px 68px rgba(0, 0, 0, 0.55);
+  padding: 3rem 2.5rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1.75rem;
-  padding: 3rem 4rem;
-  text-align: center;
-  background: rgba(13, 19, 41, 0.9);
-  border-radius: 36px;
-  border: 1px solid rgba(0, 191, 255, 0.35);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 45px rgba(0, 191, 255, 0.22);
-  max-width: 580px;
+  gap: 1.25rem;
 }
 
-.splash-screen__orbital {
-  position: relative;
-  width: min(320px, 60vw);
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.splash-screen__orbital-bg {
-  position: absolute;
-  inset: -20%;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    rgba(0, 191, 255, 0.35),
-    rgba(242, 183, 5, 0.3),
-    rgba(255, 51, 102, 0.32),
-    rgba(0, 122, 255, 0.35),
-    rgba(0, 191, 255, 0.35)
-  );
-  filter: blur(18px);
-  animation: splash-orbit-spin 8s linear infinite;
-  mix-blend-mode: screen;
-  opacity: 0.85;
-}
-
-.splash-screen__logo-ring {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, rgba(0, 191, 255, 0.2), rgba(12, 18, 28, 0.9));
-  border: 3px solid rgba(0, 191, 255, 0.6);
-  box-shadow:
-    0 0 35px rgba(0, 191, 255, 0.45),
-    0 0 70px rgba(255, 51, 102, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.splash-screen__logo {
-  width: 72%;
-  height: 72%;
-  object-fit: cover;
-  border-radius: 50%;
-  filter: drop-shadow(0 18px 32px rgba(0, 0, 0, 0.65));
-}
-
-.splash-screen__logo-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, rgba(0, 191, 255, 0.28), rgba(5, 10, 18, 0.95));
-  font-family: var(--font-display);
-  font-size: 2.8rem;
-  letter-spacing: 0.32em;
+.splash-screen__eyebrow {
+  font-size: 0.85rem;
+  letter-spacing: 0.42em;
   text-transform: uppercase;
-  color: var(--color-text);
-  text-shadow: 0 0 30px rgba(0, 191, 255, 0.4);
-}
-
-.splash-screen__logo-fallback span {
-  display: inline-block;
-  transform: scaleX(0.92);
-  letter-spacing: 0.28em;
+  color: rgba(163, 220, 255, 0.78);
 }
 
 .splash-screen__title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.1rem;
-  letter-spacing: 0.38em;
-  text-transform: uppercase;
-  color: rgba(230, 231, 232, 0.66);
+  font-size: 2.15rem;
+  letter-spacing: 0.08em;
+  color: var(--color-text);
 }
 
 .splash-screen__message {
   margin: 0;
   font-size: 1.05rem;
-  color: rgba(230, 231, 232, 0.82);
+  line-height: 1.6;
+  color: rgba(230, 233, 236, 0.82);
 }
 
 .splash-screen__status-hint {
   margin: 0;
   font-size: 0.95rem;
-  color: rgba(230, 231, 232, 0.68);
+  color: rgba(163, 220, 255, 0.8);
 }
 
 .splash-screen__spinner {
@@ -597,6 +531,49 @@ body {
   border-top-color: rgba(255, 51, 102, 0.85);
   animation: spin 1.2s linear infinite;
   box-shadow: 0 0 24px rgba(0, 191, 255, 0.35);
+}
+
+.splash-screen__signature {
+  position: absolute;
+  right: 2.5rem;
+  bottom: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-end;
+  text-align: right;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(188, 230, 255, 0.85);
+}
+
+.splash-screen__signature img {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.45));
+}
+
+@media (max-width: 720px) {
+  .splash-screen {
+    padding: 3rem 1.25rem;
+  }
+
+  .splash-screen__panel {
+    padding: 2.5rem 2rem;
+  }
+
+  .splash-screen__signature {
+    position: static;
+    margin-top: 2rem;
+    align-items: center;
+    text-align: center;
+  }
+
+  .splash-screen__signature img {
+    width: 96px;
+  }
 }
 
 @keyframes spin {
@@ -611,10 +588,7 @@ body {
   }
 }
 
-@keyframes splash-orbit-spin {
-  to {
-    transform: rotate(360deg);
-  }
+
 }
 
 @keyframes app-shell-color-shift {
