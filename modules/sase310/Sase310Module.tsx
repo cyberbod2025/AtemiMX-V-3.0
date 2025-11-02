@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { loginUser, logoutUser } from "../../services/authService";
 import RegisterForm, { type RegisterFormValues } from "./auth/components/RegisterForm";
-import TeacherProfileForm from "./auth/components/TeacherProfileForm";
 import {
   ensureUserProfile,
   observeTeacherProfile,
@@ -35,7 +34,15 @@ interface Sase310ModuleProps {
   onNavigateHome?: () => void;
 }
 
-const EMAIL_WHITELIST_REGEX = /@(institucion\.mx|aefcm\.gob\.mx|gmail\.com)$/i;
+const EMAIL_WHITELIST_REGEX = /@institucion\.mx$/i;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{10,}$/;
+const PASSWORD_REQUIREMENTS = [
+  "• Minimo 10 caracteres.",
+  "• Incluye al menos una letra mayuscula.",
+  "• Incluye al menos una letra minuscula.",
+  "• Incluye al menos un numero."
+].join("\n");
+const DEFAULT_PLANTEL = "SECUNDARIA 310 PRESIDENTES DE MEXICO";
 const CATEGORIES = ["Seguimiento", "Incidencia", "Planeacion", "Otro"];
 
 const emptyAuthForm: AuthFormState = { email: "", password: "" };
@@ -130,7 +137,8 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
 
   const handleRegisterFieldChange = (field: keyof RegisterFormState, value: string) => {
     resetAuthMessages();
-    setRegisterForm((prev) => ({ ...prev, [field]: value }));
+    const nextValue = field === "nombreCompleto" ? value.toUpperCase() : value;
+    setRegisterForm((prev) => ({ ...prev, [field]: nextValue }));
   };
 
   const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -158,12 +166,13 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
     event.preventDefault();
     resetAuthMessages();
 
-    const nombreCompleto = registerForm.nombreCompleto.trim();
+    const nombreCompleto = registerForm.nombreCompleto.trim().toUpperCase();
     if (!nombreCompleto) {
       setAuthError("Ingresa tu nombre completo tal como aparece en la plantilla autorizada.");
       return;
     }
-    if (!normalizedRegisterEmail || !registerForm.password) {
+    const passwordValue = registerForm.password.trim();
+    if (!normalizedRegisterEmail || !passwordValue) {
       setAuthError("Completa tu correo institucional y una contrasena segura.");
       return;
     }
@@ -171,16 +180,24 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
       setAuthError("Usa un correo permitido por la institucion.");
       return;
     }
+    if (!PASSWORD_REGEX.test(passwordValue)) {
+      setAuthError("La contrasena debe tener al menos 10 caracteres, incluir mayuscula, minuscula y numero.");
+      return;
+    }
 
     setAuthSubmitting(true);
     try {
-      const { profile: createdProfile } = await registerUserWithWhitelist({
+      const { user: createdUser, profile: createdProfile } = await registerUserWithWhitelist({
         nombreCompleto,
         email: normalizedRegisterEmail,
-        password: registerForm.password,
+        password: passwordValue,
+      });
+      await saveTeacherProfile(createdUser.uid, {
+        nombre: nombreCompleto,
+        plantel: DEFAULT_PLANTEL,
       });
       setRegisterForm(emptyRegisterForm);
-      setAuthInfo("Registro completado. Puedes continuar con SASE-310.");
+      setAuthInfo("Registro recibido. Vinculamos tu perfil automaticamente, espera unos segundos.");
       setProfile(createdProfile);
       setAuthStep("chooser");
     } catch (error) {
@@ -256,6 +273,17 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   }, [user]);
 
   useEffect(() => {
+    if (!profile || isAuthorized) {
+      return;
+    }
+    const redirectTimer = window.setTimeout(() => {
+      onNavigateHome?.();
+      setAuthStep("chooser");
+    }, 4000);
+    return () => window.clearTimeout(redirectTimer);
+  }, [profile, isAuthorized, onNavigateHome]);
+
+  useEffect(() => {
     if (!user) {
       setTeacherProfile(null);
       setTeacherProfileLoading(false);
@@ -281,6 +309,34 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
     };
   }, [user]);
 
+  useEffect(() => {
+    if (
+      !user ||
+      !profile ||
+      teacherProfile ||
+      teacherProfileLoading ||
+      teacherProfileSubmitting
+    ) {
+      return;
+    }
+
+    const nombre = profile.nombreCompleto?.trim().toUpperCase() ?? profile.email?.toUpperCase() ?? "DOCENTE";
+
+    setTeacherProfileSubmitting(true);
+    setTeacherProfileError(null);
+    void saveTeacherProfile(user.uid, {
+      nombre,
+      plantel: DEFAULT_PLANTEL,
+    })
+      .catch((error) => {
+        console.error("[SASE-310] Auto save teacher profile failed:", error);
+        setTeacherProfileError("No pudimos vincular tus datos docentes automaticamente.");
+      })
+      .finally(() => {
+        setTeacherProfileSubmitting(false);
+      });
+  }, [user, profile, teacherProfile, teacherProfileLoading, teacherProfileSubmitting]);
+
   const handleReportInputChange =
     (field: keyof ReportFormState) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -292,7 +348,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   const handleCreateReport = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user) {
-      setReportError("Debes iniciar sesiÃƒÂ³n para crear un reporte.");
+      setReportError("Debes iniciar sesiAƒA³n para crear un reporte.");
       return;
     }
     if (!isAuthorized) {
@@ -348,7 +404,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
     <section className="card space-y-4">
       <header>
         <h2 className="text-xl font-display text-white">SASE-310 Piloto</h2>
-        <p className="text-sm text-gray-400">Elige cÃƒÂ³mo deseas continuar.</p>
+        <p className="text-sm text-gray-400">Elige cAƒA³mo deseas continuar.</p>
       </header>
       <div className="flex flex-col gap-3 md:flex-row md:gap-4">
         <button
@@ -376,7 +432,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
       <header className="space-y-2">
         <h2 className="text-xl font-display text-white">Ingresar</h2>
         <p className="text-sm text-gray-400">
-          Usa tu correo institucional u oficial. Si no tienes cuenta, vuelve y elige la opciÃƒÂ³n de preregistro.
+          Usa tu correo institucional u oficial. Si no tienes cuenta, vuelve y elige la opciAƒA³n de preregistro.
         </p>
       </header>
       <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -438,13 +494,14 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
         submitting={authSubmitting}
         serverError={authError}
         isEmailValid={isRegisterEmailValid}
+        passwordHint={PASSWORD_REQUIREMENTS}
         onChange={handleRegisterFieldChange}
         onSubmit={handleRegisterSubmit}
         onCancel={() => handleSelectStep("chooser")}
       />
       {authInfo ? <p className="text-sm text-emerald-400">{authInfo}</p> : null}
       <p className="text-xs text-gray-500">
-        La lista blanca se gestiona desde Firestore. Cada docente cuenta con un unico acceso asignado.
+        La lista blanca se gestiona desde Firestore. Cada docente cuenta con un unico acceso asignado y se vincula automaticamente al plantel {DEFAULT_PLANTEL}.
       </p>
     </section>
   );
@@ -462,12 +519,12 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
       <div className="card">
         <h3 className="text-lg font-display mb-2">No fue posible cargar tu perfil docente</h3>
         <p className="text-sm text-red-400">{profileError}</p>
-        <p className="text-xs text-gray-500 mt-3">Intenta cerrar sesiÃƒÂ³n y volver a ingresar.</p>
+        <p className="text-xs text-gray-500 mt-3">Intenta cerrar sesiAƒA³n y volver a ingresar.</p>
       </div>
       <div className="card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <p className="text-sm text-gray-400">Puedes volver al menÃƒÂº principal si lo prefieres.</p>
+        <p className="text-sm text-gray-400">Puedes volver al menAƒAº principal si lo prefieres.</p>
         <button type="button" className="btn btn-secondary md:w-auto w-full" onClick={handleLogout} disabled={isBusy}>
-          Cerrar sesiÃƒÂ³n
+          Cerrar sesiAƒA³n
         </button>
       </div>
     </section>
@@ -475,39 +532,21 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
 
   const renderTeacherProfileMissing = () => (
     <section className="space-y-6">
-      <div className="card space-y-4">
-        <h3 className="text-lg font-display text-white">Completa tus datos docentes</h3>
+      <div className="card space-y-3">
+        <h3 className="text-lg font-display text-white">Registrando datos docentes...</h3>
         <p className="text-sm text-gray-400">
-          Antes de continuar necesitamos tu nombre, plantel y extensiÃƒÂ³n para asociar reportes correctamente.
+          Estamos vinculando tu perfil con el plantel {DEFAULT_PLANTEL}. Este paso ocurre automaticamente la primera vez que ingresas.
         </p>
-        <TeacherProfileForm
-          defaultValues={teacherProfile ?? undefined}
-          submitting={teacherProfileSubmitting}
-          serverError={teacherProfileError}
-          submitLabel="Guardar datos docentes"
-          onSubmit={async (data) => {
-            if (!user) {
-              setTeacherProfileError("Sesion expirada. Vuelve a ingresar.");
-              return;
-            }
-            setTeacherProfileSubmitting(true);
-            setTeacherProfileError(null);
-            try {
-              await saveTeacherProfile(user.uid, {
-                nombre: data.nombre.trim(),
-                plantel: data.plantel.trim(),
-              });
-              window.alert("Datos docentes actualizados. Espera la autorizacion.");
-              await logoutUser();
-              onNavigateHome?.();
-            } catch (error) {
-              console.error("[SASE-310] Save teacher profile failed:", error);
-              setTeacherProfileError("No fue posible guardar tus datos docentes.");
-            } finally {
-              setTeacherProfileSubmitting(false);
-            }
-          }}
-        />
+        {teacherProfileSubmitting ? (
+          <p className="text-sm text-gray-400">Guardando informacion...</p>
+        ) : null}
+        {teacherProfileError ? (
+          <p className="text-sm text-red-400">{teacherProfileError}</p>
+        ) : (
+          <p className="text-xs text-gray-500">
+            Puedes permanecer en esta pantalla; en segundos te mostraremos el modulo cuando la sincronizacion finalice.
+          </p>
+        )}
       </div>
     </section>
   );
@@ -516,7 +555,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
     <section className="card space-y-4">
       <h3 className="text-lg font-display text-white">Preregistro recibido</h3>
       <p className="text-sm text-gray-400">
-        Tu cuenta estÃƒÂ¡ en proceso de autorizaciÃƒÂ³n. RecibirÃƒÂ¡s la notificaciÃƒÂ³n cuando puedas ingresar al mÃƒÂ³dulo.
+        Tu cuenta esta en validacion. Te avisaremos al correo cuando puedas ingresar al modulo.
       </p>
       <div className="rounded-md border border-gray-800 bg-black/20 p-3 text-xs text-gray-300 space-y-1">
         <p>
@@ -526,9 +565,9 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
           <span className="font-semibold text-white">Rol asignado:</span> {profile?.rol ?? "docente"}
         </p>
       </div>
-      <button type="button" className="btn btn-secondary w-full" onClick={handleLogout} disabled={isBusy}>
-        Volver al menÃƒÂº
-      </button>
+      <p className="text-xs text-gray-500">
+        Te enviaremos un aviso cuando la cuenta este autorizada. Esta ventana se cerrara automaticamente.
+      </p>
     </section>
   );
 
@@ -545,7 +584,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
         </div>
         <div className="flex flex-col gap-2 md:flex-row">
           <button type="button" className="btn btn-secondary" onClick={handleLogout} disabled={isBusy}>
-            {authSubmitting ? "Cerrando sesiÃƒÂ³n..." : "Cerrar sesiÃƒÂ³n"}
+            {authSubmitting ? "Cerrando sesiAƒA³n..." : "Cerrar sesiAƒA³n"}
           </button>
           <button
             type="button"
@@ -555,7 +594,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
             }}
             disabled={isBusy}
           >
-            Volver al menÃƒÂº
+            Volver al menAƒAº
           </button>
         </div>
       </div>
@@ -568,7 +607,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
       <form onSubmit={handleCreateReport} className="space-y-4">
         <div>
           <label className="block mb-1 text-sm text-gray-300" htmlFor="report-title">
-            TÃƒÂ­tulo
+            TAƒA­tulo
           </label>
           <input
             id="report-title"
@@ -583,12 +622,12 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
         </div>
         <div>
           <label className="block mb-1 text-sm text-gray-300" htmlFor="report-description">
-            DescripciÃƒÂ³n
+            DescripciAƒA³n
           </label>
           <textarea
             id="report-description"
             className="input-field w-full h-32"
-            placeholder="Describe la situaciÃƒÂ³n o seguimiento"
+            placeholder="Describe la situaciAƒA³n o seguimiento"
             value={reportForm.description}
             onChange={handleReportInputChange("description")}
             disabled={isBusy}
@@ -598,7 +637,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="block mb-1 text-sm text-gray-300" htmlFor="report-category">
-              CategorÃƒÂ­a
+              CategorAƒA­a
             </label>
             <select
               id="report-category"
@@ -608,7 +647,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
               disabled={isBusy}
               required
             >
-              <option value="">Selecciona una categorÃƒÂ­a</option>
+              <option value="">Selecciona una categorAƒA­a</option>
               {CATEGORIES.map((category) => (
                 <option key={category} value={category}>
                   {category}
@@ -651,7 +690,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
       {reportsLoading ? <p className="text-sm text-gray-400">Cargando reportes...</p> : null}
       {reportsError ? <p className="text-sm text-red-400">{reportsError}</p> : null}
       {!reportsLoading && reports.length === 0 && !reportsError ? (
-        <p className="text-sm text-gray-400">AÃƒÂºn no has registrado reportes.</p>
+        <p className="text-sm text-gray-400">AAƒAºn no has registrado reportes.</p>
       ) : null}
       <ul className="space-y-3">
         {reports.map((report) => (
@@ -660,11 +699,11 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
               <div>
                 <h4 className="text-base font-semibold text-white">{report.title}</h4>
                 <p className="text-xs text-gray-500">
-                  Creado: {report.createdAt.toDate().toLocaleString()} | ÃƒÅ¡ltima actualizaciÃƒÂ³n:{" "}
+                  Creado: {report.createdAt.toDate().toLocaleString()} | AƒA¡ltima actualizaciAƒA³n:{" "}
                   {report.updatedAt.toDate().toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500">
-                  CategorÃƒÂ­a: {report.category} | Fecha de aplicaciÃƒÂ³n: {report.date.toDate().toLocaleDateString()}
+                  CategorAƒA­a: {report.category} | Fecha de aplicaciAƒA³n: {report.date.toDate().toLocaleDateString()}
                 </p>
               </div>
               <button
@@ -719,3 +758,10 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
 };
 
 export default Sase310Module;
+
+
+
+
+
+
+

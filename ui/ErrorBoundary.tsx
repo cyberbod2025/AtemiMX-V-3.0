@@ -1,8 +1,8 @@
-import React from "react";
+import React, { type ErrorInfo, type ReactNode } from "react";
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
+  children: ReactNode;
+  fallback?: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -11,24 +11,23 @@ interface ErrorBoundaryState {
 }
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
+  declare props: Readonly<ErrorBoundaryProps>;
+  declare setState: React.Component<ErrorBoundaryProps, ErrorBoundaryState>["setState"];
+  state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo): void {
+  componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error("[UI] Unhandled rendering error:", error, info);
   }
 
-  private handleReset = (): void => {
+  private handleReset: () => void = () => {
     this.setState({ hasError: false, error: undefined });
   };
 
-  render(): React.ReactNode {
+  render(): ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;

@@ -7,9 +7,10 @@ import {
   Notebook,
   Settings,
   ShieldCheck,
+  Users2,
 } from "lucide-react";
 
-type ActiveView = "menu" | "sase310";
+type ActiveView = "menu" | "sase310" | "admin";
 
 interface SidebarProps {
   activeView: ActiveView;
@@ -17,9 +18,11 @@ interface SidebarProps {
   logoutPending?: boolean;
   onSelectHome: () => void;
   onSelectSase: () => void;
+  onSelectAdmin: () => void;
   onOpenHelp: () => void;
   onOpenSettings: () => void;
   onLogout: () => void;
+  canAccessAdmin?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -28,9 +31,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   logoutPending = false,
   onSelectHome,
   onSelectSase,
+  onSelectAdmin,
   onOpenHelp,
   onOpenSettings,
   onLogout,
+  canAccessAdmin = false,
 }) => {
   return (
     <aside className="sidebar">
@@ -69,6 +74,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>SASE-310</span>
             {!hasSession ? <span className="sidebar__pill">Login</span> : null}
           </button>
+          {canAccessAdmin ? (
+            <button
+              type="button"
+              className={`sidebar__nav-item ${activeView === "admin" ? "is-active" : ""}`}
+              onClick={onSelectAdmin}
+            >
+              <Users2 size={18} aria-hidden />
+              <span>Administración</span>
+            </button>
+          ) : null}
         </nav>
       </div>
 

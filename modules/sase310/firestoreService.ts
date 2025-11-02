@@ -11,7 +11,7 @@ import {
   type DocumentData,
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 
 import { db } from "../../services/firebase";
 import { reportInputSchema, type ReportInput } from "./validation/reportSchema";
@@ -49,6 +49,7 @@ export interface ReportOwnerMeta {
 }
 
 const reportUpdateSchema = reportInputSchema.omit({ uid: true }).partial();
+type ReportUpdatePayload = z.infer<typeof reportUpdateSchema>;
 
 export type ReportUpdate = Partial<Omit<Report, "id" | "uid" | "createdAt" | "updatedAt">> & {
   date?: string;
@@ -70,11 +71,7 @@ const validateReportInput = (data: ReportInput): ReportInput => {
   }
 };
 
-const validateReportUpdate = (data: ReportUpdate): ReportUpdate => {
-  if (!data || Object.keys(data).length === 0) {
-    return data;
-  }
-
+const validateReportUpdate = (data: ReportUpdate): ReportUpdatePayload => {
   try {
     return reportUpdateSchema.parse(data);
   } catch (error) {
