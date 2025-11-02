@@ -8,23 +8,32 @@ interface AdminPanelProps {
 }
 
 const ROLE_OPTIONS: Array<{ value: AssignableRole; label: string }> = [
-  { value: "docente", label: "Docente" },
-  { value: "prefectura", label: "Prefectura" },
-  { value: "orientacion", label: "Orientación" },
-  { value: "coordinacion", label: "Coordinación" },
-  { value: "direccion", label: "Dirección" },
+  { value: "teacher", label: "Docente" },
+  { value: "guidance", label: "Orientacion" },
+  { value: "prefect", label: "Prefectura" },
+  { value: "medical", label: "Servicio Medico" },
+  { value: "socialWork", label: "Trabajo Social" },
+  { value: "clerk", label: "Secretaria" },
 ];
+
+const getRoleLabel = (role: UserProfile["rol"]): string => {
+  if (role === "admin") {
+    return "Direccion";
+  }
+  const match = ROLE_OPTIONS.find((option) => option.value === role);
+  return match?.label ?? role;
+};
 
 const getDefaultRole = (profile: UserProfile): AssignableRole => {
   if (profile.rol === "admin") {
-    return "docente";
+    return "teacher";
   }
   if (
     ROLE_OPTIONS.some((option) => option.value === profile.rol)
   ) {
     return profile.rol as AssignableRole;
   }
-  return "docente";
+  return "teacher";
 };
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onRefreshRequested }) => {
@@ -50,7 +59,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onRefreshRequested }) =>
     setSuccessMessage(null);
     try {
       await approve(profile.id, role);
-      setSuccessMessage(`Usuario ${profile.email} aprobado como ${role}.`);
+      setSuccessMessage(`Usuario ${profile.email} aprobado como ${getRoleLabel(role)}.`);
       setSelectedRoles((previous) => {
         const next = { ...previous };
         delete next[profile.id];
@@ -154,3 +163,4 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onRefreshRequested }) =>
 };
 
 export default AdminPanel;
+
