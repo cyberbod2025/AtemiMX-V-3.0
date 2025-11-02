@@ -2,6 +2,8 @@ import React from "react";
 import type { User } from "firebase/auth";
 import { CalendarClock, Notebook, ShieldCheck } from "lucide-react";
 
+const TELMEX_LOGO_PATH = "/branding/logo%20de%20Temex%20con%20in.png";
+
 interface MainMenuProps {
   user: User | null;
   isAuthLoading: boolean;
@@ -17,7 +19,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({ user, isAuthLoading, onOpenS
 
   return (
     <div className="main-menu">
-      <header className="main-menu__header">
+      <header className="main-menu__header main-menu__header--logo">
+        <img
+          src={TELMEX_LOGO_PATH}
+          alt="Logo TELMEX Educación"
+          className="main-menu__logo"
+          loading="lazy"
+        />
         <p className="main-menu__subtitle">
           Gestiona modulos certificados con navegacion segura y experiencias modulares.
         </p>

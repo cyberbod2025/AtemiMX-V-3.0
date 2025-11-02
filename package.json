@@ -29,5 +29,9 @@
     "vite": "^6.2.0",
     "vitest": "^4.0.3"
   },
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  },
   "packageManager": "npm@10.9.2"
 }

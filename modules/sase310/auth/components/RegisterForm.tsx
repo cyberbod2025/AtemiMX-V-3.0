@@ -11,19 +11,21 @@ interface RegisterFormProps {
   submitting?: boolean;
   serverError?: string | null;
   isEmailValid?: boolean;
+  passwordHint?: string;
   onChange: (field: keyof RegisterFormValues, value: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   onCancel?: () => void;
 }
 
 const helperCopy =
-  "Introduce tu nombre tal como aparece en la plantilla autorizada. Cuando se valide, tu cuenta se activara automaticamente.";
+  "El sistema transforma tu nombre a mayusculas para que coincida con la plantilla autorizada.";
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({
   values,
   submitting = false,
   serverError = null,
   isEmailValid = true,
+  passwordHint,
   onChange,
   onSubmit,
   onCancel,
@@ -40,7 +42,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         placeholder="Ej. HUGO SANCHEZ RESENDIZ"
         autoComplete="name"
         value={values.nombreCompleto}
-        onChange={(event) => onChange("nombreCompleto", event.target.value)}
+        onChange={(event) => onChange("nombreCompleto", event.target.value.toUpperCase())}
         disabled={submitting}
         required
       />
@@ -75,13 +77,14 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         id="register-password"
         type="password"
         className="input-field w-full"
-        placeholder="Escribe una contrasena segura"
+        placeholder="Debe cumplir los requisitos minimos"
         autoComplete="new-password"
         value={values.password}
         onChange={(event) => onChange("password", event.target.value)}
         disabled={submitting}
         required
       />
+      {passwordHint ? <p className="text-xs text-gray-400 mt-1 whitespace-pre-line">{passwordHint}</p> : null}
     </div>
 
     {serverError ? <p className="text-sm text-red-400">{serverError}</p> : null}

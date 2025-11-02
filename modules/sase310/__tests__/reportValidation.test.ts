@@ -38,18 +38,16 @@ const basePayload: ReportInput = {
 };
 
 describe("reportInputSchema", () => {
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-
   beforeEach(() => {
     addDocMock.mockReset();
     collectionMock.mockReset();
     addDocMock.mockResolvedValue({ id: "test-report" });
     collectionMock.mockReturnValue({});
-    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore();
+    vi.restoreAllMocks();
   });
 
   it("accepts a valid payload", () => {

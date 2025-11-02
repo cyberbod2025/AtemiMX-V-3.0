@@ -23,7 +23,7 @@ const USERS_COLLECTION = "users";
 const DOCENTES_COLLECTION = "docentes";
 const WHITELIST_COLLECTION = "plantilla_docente";
 
-const ROLE_VALUES = ["docente", "orientacion", "directivo", "admin"] as const;
+const ROLE_VALUES = ["docente", "prefectura", "orientacion", "coordinacion", "direccion", "admin"] as const;
 
 const userProfileSchema = z.object({
   email: z.string().email(),
@@ -249,9 +249,9 @@ export const registerUserWithWhitelist = async (payload: WhitelistRegistrationPa
       nombreCompleto: displayName,
       nombreNormalizado: normalizedName,
       rol: whitelistEntry.rol,
-      autorizado: true,
+      autorizado: false,
       fechaRegistro: now,
-      autorizadoPor: "whitelist:sase310",
+      autorizadoPor: null,
       plantillaDocenteId: whitelistEntry.id,
     };
 
@@ -271,7 +271,7 @@ export const registerUserWithWhitelist = async (payload: WhitelistRegistrationPa
 
       transaction.set(userRef, profileRecord, { merge: true });
       transaction.update(whitelistRef, {
-        registrado: true,
+        registrado: false,
         uid_asociado: firebaseUser.uid,
         correo_registrado: normalizedEmail,
         actualizado_en: now,
@@ -349,12 +349,32 @@ export const getPendingUsers = async (): Promise<UserProfile[]> => {
 export const approveUser = async (uid: string, rol: AssignableRole): Promise<void> => {
   const userRef = doc(db, USERS_COLLECTION, uid);
   const authorizedBy = auth.currentUser?.email ?? auth.currentUser?.uid ?? null;
+  const approvedAt = Timestamp.now();
 
   try {
-    await updateDoc(userRef, {
-      autorizado: true,
-      rol,
-      autorizadoPor: authorizedBy,
+    await runTransaction(db, async (transaction) => {
+      const userSnapshot = await transaction.get(userRef);
+      const profile = parseUserDoc(userSnapshot);
+      if (!profile) {
+        throw new Error("No se encontró el perfil del usuario a aprobar.");
+      }
+
+      transaction.update(userRef, {
+        autorizado: true,
+        rol,
+        autorizadoPor: authorizedBy,
+        fechaAutorizacion: approvedAt,
+      });
+
+      if (profile.plantillaDocenteId) {
+        const whitelistRef = doc(db, WHITELIST_COLLECTION, profile.plantillaDocenteId);
+        transaction.update(whitelistRef, {
+          registrado: true,
+          uid_asociado: uid,
+          autorizado_en: approvedAt,
+          autorizado_por: authorizedBy,
+        });
+      }
     });
   } catch (error) {
     handleFirestoreError("Aprobacion de usuario fallida", error);
