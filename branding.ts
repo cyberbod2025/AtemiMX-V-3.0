@@ -7,7 +7,7 @@ export interface DepartmentBranding {
   caption?: string;
 }
 
-const GENERAL_IMAGE = "/branding/HUGO%20LOGO.png";
+const GENERAL_IMAGE = "/branding/general.png";
 
 export const GENERAL_BRANDING: DepartmentBranding = {
   key: "general",
@@ -17,13 +17,13 @@ export const GENERAL_BRANDING: DepartmentBranding = {
 };
 
 const ROLE_BRANDING: Record<UserRole, DepartmentBranding> = {
-  teacher: { key: "teacher", label: "Atem · Docentes", image: "/branding/DOCENTE.png" },
-  admin: { key: "admin", label: "Atem · Dirección", image: "/branding/DIRECCION.png" },
-  guidance: { key: "guidance", label: "Atem · Orientación", image: "/branding/ORIENTACION.png" },
+  teacher: { key: "teacher", label: "Atem · Docentes", image: "/branding/docentes.png" },
+  admin: { key: "admin", label: "Atem · Dirección", image: "/branding/direccion.png" },
+  guidance: { key: "guidance", label: "Atem · Orientación", image: "/branding/orientacion.png" },
   socialWork: { key: "socialWork", label: "Atem · Trabajo Social", image: "/branding/t social.png" },
-  prefect: { key: "prefect", label: "Atem · Prefectura", image: "/branding/PREFECTURA.png" },
+  prefect: { key: "prefect", label: "Atem · Prefectura", image: "/branding/prefectura.png" },
   medical: { key: "medical", label: "Atem · Enfermería", image: "/branding/enfermeria.png" },
-  clerk: { key: "clerk", label: "Atem · Secretaría", image: "/branding/DIRECCION.png" },
+  clerk: { key: "clerk", label: "Atem · Secretaría", image: "/branding/direccion.png" },
 };
 
 const PRIMARY_DEPARTMENT_ORDER: ReadonlyArray<UserRole> = [

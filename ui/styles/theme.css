@@ -455,17 +455,16 @@ body {
   align-items: center;
   justify-content: center;
   padding: 4rem 1.5rem;
-  background: radial-gradient(circle at 20% 20%, rgba(14, 165, 165, 0.14), transparent 52%),
-    linear-gradient(140deg, #071026, #091d32 55%, #0c2846 100%);
+  background: transparent;
 }
 
 .splash-screen__panel {
   max-width: 640px;
   width: 100%;
-  background: rgba(9, 16, 38, 0.88);
+  background: rgba(17, 24, 39, 0.85);
   border-radius: 32px;
-  border: 1px solid rgba(14, 165, 165, 0.2);
-  box-shadow: 0 28px 68px rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(14, 165, 165, 0.28);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
   padding: 3rem 2.5rem;
   display: flex;
   flex-direction: column;
@@ -543,8 +542,8 @@ body {
   padding: 0.85rem 1.1rem;
   width: min(640px, calc(100% - 3rem));
   border-radius: 20px;
-  background: rgba(8, 14, 30, 0.75);
-  border: 1px solid rgba(14, 165, 165, 0.18);
+  background: rgba(11, 17, 28, 0.75);
+  border: 1px solid rgba(14, 165, 165, 0.22);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.48);
   backdrop-filter: blur(14px);
 }
