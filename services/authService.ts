@@ -3,6 +3,7 @@
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   setPersistence,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   type Auth,
@@ -82,6 +83,12 @@ export const loginUser = async (email: string, password: string): Promise<User> 
 export const logoutUser = async (): Promise<void> => {
   await withPersistence(async (authInstance) => {
     await signOut(authInstance);
+  });
+};
+
+export const requestPasswordReset = async (email: string): Promise<void> => {
+  await withPersistence(async (authInstance) => {
+    await sendPasswordResetEmail(authInstance, email);
   });
 };
 
