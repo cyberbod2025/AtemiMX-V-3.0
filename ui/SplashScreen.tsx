@@ -1,6 +1,9 @@
 import React from "react";
 
-const DEFAULT_BRAND_IMAGE = "/branding/5.png";
+import { DEPARTMENT_BRANDS, GENERAL_BRANDING } from "../branding";
+
+const DEFAULT_BRAND_IMAGE = GENERAL_BRANDING.image;
+const DEFAULT_BRAND_LABEL = GENERAL_BRANDING.label;
 
 interface SplashScreenProps {
   title?: string;
@@ -17,7 +20,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   statusHint = null,
   showSpinner = true,
   brandImage = DEFAULT_BRAND_IMAGE,
-  brandLabel = "Hugo Sánchez",
+  brandLabel = DEFAULT_BRAND_LABEL,
 }) => {
   return (
     <div className="splash-screen">
@@ -40,6 +43,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           {brandLabel ? <figcaption>{brandLabel}</figcaption> : null}
         </figure>
       ) : null}
+      <div className="splash-screen__brand-strip" aria-label="Departamentos Atemi">
+        {DEPARTMENT_BRANDS.map((brand) => (
+          <img key={brand.key} src={brand.image} alt={brand.label} />
+        ))}
+      </div>
     </div>
   );
 };

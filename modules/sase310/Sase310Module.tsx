@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { GENERAL_BRANDING, getBrandingForRole } from "../../branding";
+import type { DepartmentBranding } from "../../branding";
 import { useAuth } from "../../hooks/useAuth";
 import { loginUser, logoutUser } from "../../services/authService";
 import RegisterForm, { type RegisterFormValues } from "./auth/components/RegisterForm";
@@ -119,6 +121,12 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   const reauthEmail = profile?.email ?? user?.email ?? "";
   const canTriggerReauth = reauthEmail.length > 0;
   const auditResource = useMemo(() => (user ? `docentes/${user.uid}` : "docentes/unknown"), [user?.uid]);
+  const currentBranding = useMemo<DepartmentBranding>(() => {
+    if (profile?.rol) {
+      return getBrandingForRole(profile.rol);
+    }
+    return GENERAL_BRANDING;
+  }, [profile?.rol]);
 
   const isRegisterEmailValid = useMemo(() => {
     if (!normalizedRegisterEmail) {
@@ -130,6 +138,14 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   const isAuthorized = profile?.autorizado === true;
 
   const isBusy = authSubmitting || reportSubmitting || teacherProfileSubmitting;
+  const renderBrandFigure = (
+    brand: DepartmentBranding = currentBranding,
+    size: "md" | "sm" | "xs" = "md",
+  ) => (
+    <figure className={`card-brand card-brand--${size}`}>
+      <img src={brand.image} alt={brand.label} />
+    </figure>
+  );
 
   const resetAuthMessages = () => {
     setAuthError(null);
@@ -416,6 +432,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
 
   const renderChooser = () => (
     <section className="card space-y-4">
+      {renderBrandFigure(GENERAL_BRANDING)}
       <header>
         <h2 className="text-xl font-display text-white">SASE-310 Piloto</h2>
         <p className="text-sm text-gray-400">Elige como deseas continuar.</p>
@@ -443,6 +460,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
 
   const renderLoginForm = () => (
     <section className="card space-y-4">
+      {renderBrandFigure(GENERAL_BRANDING)}
       <header className="space-y-2">
         <h2 className="text-xl font-display text-white">Ingresar</h2>
         <p className="text-sm text-gray-400">
@@ -497,6 +515,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
 
   const renderRegisterForm = () => (
     <section className="card space-y-5">
+      {renderBrandFigure(GENERAL_BRANDING)}
       <header className="space-y-2">
         <h2 className="text-xl font-display text-white">Registro con lista blanca</h2>
         <p className="text-sm text-gray-400">
@@ -523,6 +542,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   const renderProfileLoading = () => (
     <section className="space-y-6">
       <div className="card">
+        {renderBrandFigure(currentBranding, "sm")}
         <p className="text-sm text-gray-400">Validando permisos docentes...</p>
       </div>
     </section>
@@ -531,6 +551,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   const renderProfileError = () => (
     <section className="space-y-6">
       <div className="card">
+        {renderBrandFigure(currentBranding, "sm")}
         <h3 className="text-lg font-display mb-2">No fue posible cargar tu perfil docente</h3>
         <p className="text-sm text-red-400">{profileError}</p>
         <p className="text-xs text-gray-500 mt-3">Intenta cerrar sesion y volver a ingresar.</p>
@@ -547,6 +568,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   const renderTeacherProfileMissing = () => (
     <section className="space-y-6">
       <div className="card space-y-3">
+        {renderBrandFigure(currentBranding, "sm")}
         <h3 className="text-lg font-display text-white">Registrando datos docentes...</h3>
         <p className="text-sm text-gray-400">
           Estamos vinculando tu perfil con el plantel {DEFAULT_PLANTEL}. Este paso ocurre automaticamente la primera vez que ingresas.
@@ -567,6 +589,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
 
   const renderPendingAuthorization = () => (
     <section className="card space-y-4">
+      {renderBrandFigure(currentBranding)}
       <h3 className="text-lg font-display text-white">Preregistro recibido</h3>
       <p className="text-sm text-gray-400">
         Tu cuenta esta en validacion. Te avisaremos al correo cuando puedas ingresar al modulo.
@@ -587,6 +610,9 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
 
   const renderSensitiveAccessCard = () => (
     <section className="card space-y-4">
+      <div className="flex justify-center md:justify-end">
+        {renderBrandFigure(currentBranding, "sm")}
+      </div>
       <header className="space-y-2">
         <h3 className="text-lg font-display text-white">Datos protegidos</h3>
         <p className="text-sm text-gray-400">
@@ -636,10 +662,13 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   );
 
   const renderHeader = () => (
-    <header className="card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div>
-        <h2 className="text-xl font-display text-[var(--accent-1)]">SASE-310 Reportes</h2>
-        <p className="text-sm text-gray-400">Gestiona reportes vinculados a tu cuenta docente.</p>
+    <header className="card flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+        {renderBrandFigure(currentBranding, "sm")}
+        <div>
+          <h2 className="text-xl font-display text-[var(--accent-1)]">SASE-310 Reportes</h2>
+          <p className="text-sm text-gray-400">Gestiona reportes vinculados a tu cuenta docente.</p>
+        </div>
       </div>
       <div className="flex flex-col items-start gap-2 md:items-end">
         <div className="text-sm text-gray-300">
