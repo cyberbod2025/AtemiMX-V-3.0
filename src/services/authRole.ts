@@ -1,24 +1,21 @@
-const KNOWN_ROLES = new Set(["docentes", "prefectura", "direccion", "orientacion", "tsocial", "enfermeria"]);
-const BODY_ROLE_PREFIX = "rol-";
+export type UserRole =
+  | "docentes"
+  | "prefectura"
+  | "direccion"
+  | "orientacion"
+  | "tsocial"
+  | "enfermeria"
+  | "none";
 
-function clearRoleClasses(target: HTMLElement) {
-  [...target.classList]
-    .filter((className) => className.startsWith(BODY_ROLE_PREFIX))
-    .forEach((className) => target.classList.remove(className));
-}
+const ROLE_CLASS_PREFIX = "rol-";
 
-export function applyRoleTheme(role: string | null | undefined) {
+export function applyRoleTheme(role: UserRole): void {
   if (typeof document === "undefined") {
     return;
   }
 
-  const normalized = (role ?? "").toLowerCase();
   const body = document.body;
-
-  clearRoleClasses(body);
-
-  if (KNOWN_ROLES.has(normalized)) {
-    body.classList.add(`${BODY_ROLE_PREFIX}${normalized}`);
-  }
+  body.className = "";
+  body.classList.add(`${ROLE_CLASS_PREFIX}${role}`);
 }
 

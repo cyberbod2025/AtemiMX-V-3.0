@@ -1,25 +1,20 @@
-import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import { useMemo } from "react";
 
-import { getCurrentUser, observeAuthState } from "../services/authService";
+import { useAuthContext } from "@/contexts/AuthContext";
 
-export const useAuth = (): { user: User | null; loading: boolean } => {
-  const [user, setUser] = useState<User | null>(() => getCurrentUser());
-  const [loading, setLoading] = useState(() => user === null);
+export const useAuth = () => {
+  const { user, loading, claimsLoading, role, visualRole, claimsError } = useAuthContext();
 
-  useEffect(() => {
-    const unsubscribe = observeAuthState(
-      (currentUser) => {
-        setUser(currentUser);
-        setLoading(false);
-      },
-      () => {
-        setLoading(false);
-      },
-    );
-
-    return unsubscribe;
-  }, []);
-
-  return { user, loading };
+  return useMemo(
+    () => ({
+      user,
+      loading: loading || claimsLoading,
+      authLoading: loading,
+      claimsLoading,
+      role,
+      visualRole,
+      claimsError,
+    }),
+    [user, loading, claimsLoading, role, visualRole, claimsError],
+  );
 };
