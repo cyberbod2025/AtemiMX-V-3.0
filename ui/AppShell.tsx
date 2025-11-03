@@ -4,7 +4,6 @@ import { useAuth } from "../hooks/useAuth";
 import AdminPanel from "../modules/sase310/auth/components/AdminPanel";
 import Sase310Module from "../modules/sase310/Sase310Module";
 import { logoutUser } from "../services/authService";
-import { applyRoleTheme } from "@/services/authRole";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { MainMenu } from "./MainMenu";
 import { Sidebar } from "./Sidebar";
@@ -34,14 +33,12 @@ const resolvePath = (view: ActiveView): string => {
 };
 
 export const AppShell: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, claimsLoading, role, claimsError } = useAuth();
   const [activeView, setActiveView] = useState<ActiveView>(() => getInitialView());
   const [minSplashElapsed, setMinSplashElapsed] = useState(false);
   const [splashDeadlineElapsed, setSplashDeadlineElapsed] = useState(false);
   const [logoutPending, setLogoutPending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [roleClaim, setRoleClaim] = useState<string | null>(null);
-  const [claimsLoading, setClaimsLoading] = useState(false);
 
   const isAuthPending = loading || claimsLoading;
 
@@ -73,47 +70,10 @@ export const AppShell: React.FC = () => {
   }, [statusMessage]);
 
   useEffect(() => {
-    let cancelled = false;
-    if (!user) {
-      setRoleClaim(null);
-      setClaimsLoading(false);
-      return () => {
-        cancelled = true;
-      };
+    if (claimsError) {
+      setStatusMessage(claimsError);
     }
-
-    setClaimsLoading(true);
-    void user
-      .getIdTokenResult(true)
-      .then((token) => {
-        if (!cancelled) {
-          const nextRole = typeof token.claims.role === "string" ? (token.claims.role as string) : null;
-          setRoleClaim(nextRole);
-        }
-      })
-      .catch((error) => {
-        console.error("[UI] No fue posible recuperar los claims del usuario", error);
-        if (!cancelled) {
-          setStatusMessage("No pudimos recuperar tus permisos. Intenta volver a iniciar sesi�n.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setClaimsLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
-
-  useEffect(() => {
-    applyRoleTheme(roleClaim);
-    return () => {
-      applyRoleTheme(null);
-    };
-  }, [roleClaim]);
+  }, [claimsError]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -155,7 +115,7 @@ export const AppShell: React.FC = () => {
     }
   }, [user, activeView]);
 
-  const isAdmin = useMemo(() => roleClaim === "admin", [roleClaim]);
+  const isAdmin = useMemo(() => (role ?? "").toLowerCase() === "admin", [role]);
 
   const handleSelectMenu = () => {
     setActiveView("menu");
