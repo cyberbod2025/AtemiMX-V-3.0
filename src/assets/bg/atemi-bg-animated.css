@@ -105,3 +105,19 @@ body.rol-enfermeria .atemi-gradient {
     animation: none;
   }
 }
+
+.role-glow {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(224, 177, 0, 0.25), transparent 60%);
+  mix-blend-mode: overlay;
+  filter: blur(100px);
+}
+
+body.rol-none .role-glow {
+  background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.3), transparent 70%);
+  filter: blur(120px);
+  opacity: 0.5;
+}

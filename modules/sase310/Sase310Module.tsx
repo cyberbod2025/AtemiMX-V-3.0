@@ -3,8 +3,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { GENERAL_BRANDING, getBrandingForRole } from "../../branding";
 import type { DepartmentBranding } from "../../branding";
 import { useAuth } from "../../hooks/useAuth";
-import { loginUser, logoutUser } from "../../services/authService";
-import RegisterForm, { type RegisterFormValues } from "./auth/components/RegisterForm";
+import { loginUser, logoutUser, requestPasswordReset } from "../../services/authService";
+import RegisterForm, { type FieldValidationState, type RegisterFormValues } from "./auth/components/RegisterForm";
 import ReauthModal from "./auth/components/ReauthModal";
 import {
   ensureUserProfile,
@@ -38,7 +38,8 @@ interface Sase310ModuleProps {
   onNavigateHome?: () => void;
 }
 
-const EMAIL_WHITELIST_REGEX = /@institucion\.mx$/i;
+const EMAIL_WHITELIST_REGEX = /@(institucion\.mx|aefcm\.gob\.mx)$/i;
+const EMAIL_WHITELIST_HELP = "Usa un correo institucional autorizado (termina en @institucion.mx o @aefcm.gob.mx).";
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{10,}$/;
 const PASSWORD_REQUIREMENTS = [
   "- Minimo 10 caracteres.",
@@ -92,6 +93,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
   const [authForm, setAuthForm] = useState<AuthFormState>(emptyAuthForm);
   const [registerForm, setRegisterForm] = useState<RegisterFormState>(emptyRegisterForm);
   const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authInfo, setAuthInfo] = useState<string | null>(null);
 
@@ -135,9 +137,70 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
     return EMAIL_WHITELIST_REGEX.test(normalizedRegisterEmail);
   }, [normalizedRegisterEmail]);
 
+  const registerNameValidation = useMemo<FieldValidationState>(() => {
+    const raw = registerForm.nombreCompleto.trim();
+    if (!raw) {
+      return { status: "idle", message: "Captura tu nombre completo tal como aparece en la plantilla." };
+    }
+    if (raw.length < 6) {
+      return { status: "error", message: "Incluye tu nombre y al menos un apellido." };
+    }
+    if (raw.split(/\s+/).length < 2) {
+      return { status: "error", message: "Agrega tus apellidos para validar el registro." };
+    }
+    if (!/^[A-ZÁÉÍÓÚÜÑ\s'.-]+$/i.test(raw)) {
+      return { status: "error", message: "Usa solo letras y espacios en tu nombre." };
+    }
+    return { status: "valid", message: "Nombre listo para validar contra la plantilla autorizada." };
+  }, [registerForm.nombreCompleto]);
+
+  const registerEmailValidation = useMemo<FieldValidationState>(() => {
+    if (!registerForm.email.trim()) {
+      return { status: "idle", message: EMAIL_WHITELIST_HELP };
+    }
+    if (!isRegisterEmailValid) {
+      return {
+        status: "error",
+        message: "El correo no pertenece a la institución. Usa una cuenta autorizada.",
+      };
+    }
+    return { status: "valid", message: "Correo institucional verificado." };
+  }, [registerForm.email, isRegisterEmailValid]);
+
+  const registerPasswordValidation = useMemo<FieldValidationState>(() => {
+    const pwd = registerForm.password.trim();
+    if (!pwd) {
+      return { status: "idle", message: "Crea una contrasena segura para tu cuenta." };
+    }
+    if (!PASSWORD_REGEX.test(pwd)) {
+      return {
+        status: "error",
+        message: "Incluye 10 caracteres, mayuscula, minuscula y numero.",
+      };
+    }
+    return { status: "valid", message: "Contrasena segura y lista para usar." };
+  }, [registerForm.password]);
+
+  const registerValidation = useMemo(
+    () => ({
+      nombreCompleto: registerNameValidation,
+      email: registerEmailValidation,
+      password: registerPasswordValidation,
+    }),
+    [registerNameValidation, registerEmailValidation, registerPasswordValidation],
+  );
+
+  const canSubmitRegister = useMemo(
+    () =>
+      registerNameValidation.status === "valid" &&
+      registerEmailValidation.status === "valid" &&
+      registerPasswordValidation.status === "valid",
+    [registerNameValidation.status, registerEmailValidation.status, registerPasswordValidation.status],
+  );
+
   const isAuthorized = profile?.autorizado === true;
 
-  const isBusy = authSubmitting || reportSubmitting || teacherProfileSubmitting;
+  const isBusy = authSubmitting || resettingPassword || reportSubmitting || teacherProfileSubmitting;
   const renderBrandFigure = (
     brand: DepartmentBranding = currentBranding,
     size: "md" | "sm" | "xs" = "md",
@@ -157,6 +220,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
     resetAuthMessages();
     setAuthForm(emptyAuthForm);
     setRegisterForm(emptyRegisterForm);
+    setResettingPassword(false);
   };
 
   const handleAuthInputChange =
@@ -192,28 +256,50 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
     }
   };
 
+  const handlePasswordReset = async () => {
+    setAuthError(null);
+    setAuthInfo(null);
+
+    if (!normalizedAuthEmail) {
+      setAuthError("Escribe tu correo institucional para recuperar tu contrasena.");
+      return;
+    }
+    if (!EMAIL_WHITELIST_REGEX.test(normalizedAuthEmail)) {
+      setAuthError("Usa un correo institucional autorizado antes de solicitar el restablecimiento.");
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      await requestPasswordReset(normalizedAuthEmail);
+      setAuthInfo("Te enviamos instrucciones para restablecer tu contrasena. Revisa tu bandeja de entrada.");
+    } catch (error) {
+      console.error("[SASE-310] Password reset failed:", error);
+      setAuthError(error instanceof Error ? error.message : "No pudimos enviar el correo de restablecimiento.");
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   const handleRegisterSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     resetAuthMessages();
 
+    if (registerNameValidation.status !== "valid") {
+      setAuthError(registerNameValidation.message ?? "Revisa tu nombre completo.");
+      return;
+    }
+    if (registerEmailValidation.status !== "valid") {
+      setAuthError(registerEmailValidation.message ?? "Usa un correo institucional valido.");
+      return;
+    }
+    if (registerPasswordValidation.status !== "valid") {
+      setAuthError(registerPasswordValidation.message ?? "Completa una contrasena segura.");
+      return;
+    }
+
     const nombreCompleto = registerForm.nombreCompleto.trim().toUpperCase();
-    if (!nombreCompleto) {
-      setAuthError("Ingresa tu nombre completo tal como aparece en la plantilla autorizada.");
-      return;
-    }
     const passwordValue = registerForm.password.trim();
-    if (!normalizedRegisterEmail || !passwordValue) {
-      setAuthError("Completa tu correo institucional y una contrasena segura.");
-      return;
-    }
-    if (!isRegisterEmailValid) {
-      setAuthError("Usa un correo permitido por la institucion.");
-      return;
-    }
-    if (!PASSWORD_REGEX.test(passwordValue)) {
-      setAuthError("La contrasena debe tener al menos 10 caracteres, incluir mayuscula, minuscula y numero.");
-      return;
-    }
 
     setAuthSubmitting(true);
     try {
@@ -452,7 +538,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
           onClick={() => handleSelectStep("register")}
           disabled={isBusy}
         >
-          Registrate (preregistro)
+          Registrate
         </button>
       </div>
     </section>
@@ -464,7 +550,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
       <header className="space-y-2">
         <h2 className="text-xl font-display text-white">Ingresar</h2>
         <p className="text-sm text-gray-400">
-          Usa tu correo institucional u oficial. Si no tienes cuenta, vuelve y elige la opcion de preregistro.
+          Usa tu correo institucional u oficial. Si no tienes cuenta, vuelve y elige la opcion de registro.
         </p>
       </header>
       <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -501,6 +587,7 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
           />
         </div>
         {authError ? <p className="text-sm text-red-400">{authError}</p> : null}
+        {authInfo ? <p className="text-sm text-emerald-400">{authInfo}</p> : null}
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <button type="button" className="btn btn-secondary md:w-auto w-full" onClick={() => handleSelectStep("chooser")}>
             Volver
@@ -509,6 +596,14 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
             {authSubmitting ? "Ingresando..." : "Ingresar"}
           </button>
         </div>
+        <button
+          type="button"
+          className="link-button md:self-end"
+          onClick={handlePasswordReset}
+          disabled={resettingPassword || isBusy}
+        >
+          {resettingPassword ? "Enviando instrucciones..." : "¿Olvidaste tu contrasena?"}
+        </button>
       </form>
     </section>
   );
@@ -526,8 +621,9 @@ const Sase310Module: React.FC<Sase310ModuleProps> = ({ onNavigateHome }) => {
         values={registerForm}
         submitting={authSubmitting}
         serverError={authError}
-        isEmailValid={isRegisterEmailValid}
         passwordHint={PASSWORD_REQUIREMENTS}
+        validation={registerValidation}
+        canSubmit={canSubmitRegister}
         onChange={handleRegisterFieldChange}
         onSubmit={handleRegisterSubmit}
         onCancel={() => handleSelectStep("chooser")}
