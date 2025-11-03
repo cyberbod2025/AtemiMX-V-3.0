@@ -279,7 +279,18 @@ La colección de whitelist se inicializa con los registros del archivo `modules/
    - `nombre_completo` (string, mayúsculas sin acentos)
    - `registrado` (boolean, empieza en `false`)
    - `uid_asociado` (string | null)
-   - `rol` (`'docente' | 'admin' | 'medical' | 'guidance' | 'socialWork' | 'prefect' | 'clerk'`)
+   - `d
+ol`d ('docente' | 'admin' | 'medical' | 'guidance' | 'socialWork' | 'prefect' | 'clerk')
+
+#### Cuenta demo sugerida
+
+Se añadió la entrada `cUSUARIO DEMO SUPERADMIN`c a `cplantilla_docente`c con el rol `cadmin`c y estado `cregistrado: false`c. Para probar la aplicación sin gestionar la plantilla:
+
+1. Desde el formulario de registro usa el nombre completo **USUARIO DEMO SUPERADMIN**.
+2. Escribe un correo institucional válido (por ejemplo, `cdemo.sase310@institucion.mx`c) y una contraseña fuerte (p. ej. `cDemoSase310!`c).
+3. Al completar el registro la cuenta queda autorizada automáticamente como director y podrás iniciar sesión con esos datos en futuras sesiones.
+
+Recuerda que en un proyecto real deberías revocar esta entrada de demo antes de ir a producción.
 
 La Cloud Function de registro bloqueará cualquier duplicado marcando `registrado: true` al asociar un `uid`.
 
