@@ -7,7 +7,7 @@ export interface DepartmentBranding {
   caption?: string;
 }
 
-const GENERAL_IMAGE = "/branding/general.png";
+const GENERAL_IMAGE = "/branding/superio al panel.png";
 
 export const GENERAL_BRANDING: DepartmentBranding = {
   key: "general",
