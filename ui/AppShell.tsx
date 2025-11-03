@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import AdminPanel from "../modules/sase310/auth/components/AdminPanel";
 import Sase310Module from "../modules/sase310/Sase310Module";
 import { logoutUser } from "../services/authService";
+import { applyRoleTheme } from "@/services/authRole";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { MainMenu } from "./MainMenu";
 import { Sidebar } from "./Sidebar";
@@ -106,6 +107,13 @@ export const AppShell: React.FC = () => {
       cancelled = true;
     };
   }, [user]);
+
+  useEffect(() => {
+    applyRoleTheme(roleClaim);
+    return () => {
+      applyRoleTheme(null);
+    };
+  }, [roleClaim]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -250,11 +258,6 @@ export const AppShell: React.FC = () => {
 
   return (
     <div className="app-shell">
-      <div className="app-shell__background">
-        <div className="app-shell__background-layer app-shell__background-layer--image" />
-        <div className="app-shell__background-layer app-shell__background-layer--gradient" />
-        <div className="app-shell__background-layer app-shell__background-layer--circuit" />
-      </div>
       <div className="app-shell__layer">
         {showSplash ? (
           <SplashScreen message={splashMessage} statusHint={splashStatusHint} />

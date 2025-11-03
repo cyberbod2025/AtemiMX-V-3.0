@@ -1,10 +1,11 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-const projectRoot = new URL("./", import.meta.url).pathname;
+const projectRoot = new URL("./src", import.meta.url).pathname;
 
 export default defineConfig({
   base: "./",
+  assetsInclude: ["**/*.svg"],
   plugins: [react()],
   esbuild: {
     jsx: "automatic",

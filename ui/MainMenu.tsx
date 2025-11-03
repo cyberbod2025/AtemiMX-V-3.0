@@ -2,7 +2,7 @@ import React from "react";
 import type { User } from "firebase/auth";
 import { CalendarClock, Notebook, ShieldCheck } from "lucide-react";
 
-const HUGO_LOGO_PATH = "/branding/5.png";
+import { DEPARTMENT_BRANDS, GENERAL_BRANDING } from "../branding";
 
 interface MainMenuProps {
   user: User | null;
@@ -16,6 +16,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({ user, isAuthLoading, onOpenS
     : user
       ? `Sesión activa como ${user.displayName ?? user.email ?? "usuario"}.`
       : "Inicia sesión dentro del módulo SASE-310 para continuar.";
+
+  const heroBrand = GENERAL_BRANDING;
 
   return (
     <div className="main-menu main-menu--landing">
@@ -34,9 +36,18 @@ export const MainMenu: React.FC<MainMenuProps> = ({ user, isAuthLoading, onOpenS
           </div>
         </div>
         <figure className="main-menu__brand">
-          <img src={HUGO_LOGO_PATH} alt="Hugo Sánchez" />
-          <figcaption>Hugo Sánchez · Arquitectura S-SDLC</figcaption>
+          <img src={heroBrand.image} alt={heroBrand.label} />
+          <figcaption>{heroBrand.caption ?? "Arquitectura S-SDLC"}</figcaption>
         </figure>
+      </section>
+
+      <section className="department-brand-grid" aria-label="Departamentos Atemi">
+        {DEPARTMENT_BRANDS.map((brand) => (
+          <figure key={brand.key} className="department-brand">
+            <img src={brand.image} alt={brand.label} loading="lazy" />
+            <figcaption>{brand.label}</figcaption>
+          </figure>
+        ))}
       </section>
 
       <section className="main-menu__grid">
