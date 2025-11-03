@@ -1,5 +1,11 @@
 [
   {
+    "nombre_completo": "USUARIO DEMO SUPERADMIN",
+    "registrado": false,
+    "uid_asociado": null,
+    "rol": "admin"
+  },
+  {
     "nombre_completo": "MARIA DEL SOCORRO VILLARROJO",
     "registrado": false,
     "uid_asociado": null,
