@@ -22,6 +22,10 @@ export const MainMenu: React.FC<MainMenuProps> = ({ user, isAuthLoading, onOpenS
   return (
     <div className="main-menu main-menu--landing">
       <section className="main-menu__hero">
+        <figure className="main-menu__brand">
+          <img src={heroBrand.image} alt={heroBrand.label} />
+          <figcaption>{heroBrand.caption ?? "Arquitectura S-SDLC"}</figcaption>
+        </figure>
         <div className="main-menu__hero-copy">
           <span className="main-menu__eyebrow">SASE-310 · AtemiMX</span>
           <h1 className="main-menu__headline">Gestiona el bienestar escolar con trazabilidad total</h1>
@@ -35,10 +39,6 @@ export const MainMenu: React.FC<MainMenuProps> = ({ user, isAuthLoading, onOpenS
             <span className="main-menu__status">{authStatus}</span>
           </div>
         </div>
-        <figure className="main-menu__brand">
-          <img src={heroBrand.image} alt={heroBrand.label} />
-          <figcaption>{heroBrand.caption ?? "Arquitectura S-SDLC"}</figcaption>
-        </figure>
       </section>
 
       <section className="department-brand-grid" aria-label="Departamentos Atemi">
