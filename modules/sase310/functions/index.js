@@ -7,6 +7,7 @@
 
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
+const { decryptPayload, encryptPayload } = require("./lib/encryption");
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -50,7 +51,7 @@ const ROLE_ALIASES = {
 const VALID_ROLES = new Set(["admin", "teacher", "prefect", "guidance", "medical", "socialWork", "clerk", "pending"]);
 const DEFAULT_ROLE = "pending";
 
-const REPORT_SCHEMA_VERSION = "1.0.0";
+const REPORT_SCHEMA_VERSION = "1.1.0";
 const REPORT_SCHEMA_PATH = "schemas/reportes.json";
 
 const CATEGORY_CANONICAL = {
@@ -205,19 +206,37 @@ exports.reportesOnCreate = functions.firestore
       return;
     }
 
+    let secret;
+    try {
+      secret = await extractReportSecret(data);
+    } catch (error) {
+      logger.error("Reporte no pudo descifrarse en reportesOnCreate", {
+        reportId,
+        error: error instanceof Error ? error.message : error,
+      });
+      return;
+    }
+
     const now = admin.firestore.Timestamp.now();
-    const normalizedTitle = normalizeString(data.title, "Seguimiento sin título");
-    const normalizedDescription = normalizeString(data.description, "Sin descripción registrada.");
-    const normalizedCategory = normalizeString(data.category, "Sin categoría");
+    const normalizedTitle = normalizeString(secret.title, "Seguimiento sin título");
+    const normalizedDescription = normalizeString(secret.description, "Sin descripción registrada.");
+    const normalizedCategory = normalizeString(secret.category, "Sin categoría");
+
+    const sanitizedSecret = {
+      ...secret,
+      title: normalizedTitle,
+      description: normalizedDescription,
+      category: normalizedCategory,
+    };
 
     await db.runTransaction(async (transaction) => {
       const folio = await generateFolio(transaction);
+      const encryptedPayload = await encryptPayload(sanitizedSecret);
 
       transaction.update(snapshot.ref, {
         folio,
-        title: normalizedTitle,
-        description: normalizedDescription,
-        category: normalizedCategory,
+        payload: encryptedPayload,
+        encryptionVersion: encryptedPayload.version,
         createdAt: data.createdAt ?? now,
         updatedAt: now,
       });
@@ -278,17 +297,21 @@ const normalizeCategory = (value) => {
 
 const buildReportSchema = () => ({
   version: REPORT_SCHEMA_VERSION,
-  description: "Esquema base para reportes SASE-310.",
-  required: ["uid", "title", "description", "category", "date"],
+  description: "Esquema base para reportes SASE-310 con cifrado en reposo.",
+  required: ["uid", "payload", "date", "createdAt", "updatedAt", "encryptionVersion"],
   properties: {
     uid: { type: "string", minLength: 1 },
-    title: { type: "string", minLength: 3, maxLength: 120 },
-    description: { type: "string", minLength: 10, maxLength: 2000 },
-    category: { type: "string", enum: Object.values(CATEGORY_CANONICAL) },
+    payload: {
+      type: "object",
+      required: ["version", "iv", "ciphertext"],
+      properties: {
+        version: { type: "number" },
+        iv: { type: "string", minLength: 12 },
+        ciphertext: { type: "string", minLength: 32 },
+      },
+    },
+    encryptionVersion: { type: "number" },
     date: { type: "timestamp" },
-    ownerName: { type: ["string", "null"] },
-    ownerEmail: { type: ["string", "null"] },
-    ownerRole: { type: ["string", "null"] },
     folio: { type: "string" },
     createdAt: { type: "timestamp" },
     updatedAt: { type: "timestamp" },
@@ -321,7 +344,37 @@ const ensureSchemaFile = async () => {
   }
 };
 
-const validateReportPayload = (data) => {
+const coerceOwnerValue = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const extractReportSecret = async (data) => {
+  if (data?.payload) {
+    try {
+      return await decryptPayload(data.payload);
+    } catch (error) {
+      logger.error("No se pudo descifrar el payload del reporte", {
+        error: error instanceof Error ? error.message : error,
+      });
+      throw new Error("Payload cifrado invalido.");
+    }
+  }
+  return {
+    title: typeof data?.title === "string" ? data.title : "",
+    description: typeof data?.description === "string" ? data.description : "",
+    category: typeof data?.category === "string" ? data.category : "",
+    dateISO: typeof data?.date === "string" ? data.date : "",
+    ownerName: coerceOwnerValue(data?.ownerName),
+    ownerEmail: coerceOwnerValue(data?.ownerEmail),
+    ownerRole: coerceOwnerValue(data?.ownerRole),
+  };
+};
+
+const validateReportPayload = async (data) => {
   const issues = [];
 
   const ensureString = (value, field, { min = 1, max = 2000 } = {}) => {
@@ -358,14 +411,15 @@ const validateReportPayload = (data) => {
     return null;
   };
 
+  const secret = await extractReportSecret(data);
   const uid = ensureString(data?.uid, "uid");
-  const title = ensureString(data?.title, "title", { min: 3, max: 120 });
-  const description = ensureString(data?.description, "description", { min: 10, max: 2000 });
-  const category = normalizeCategory(data?.category);
+  const title = ensureString(secret?.title, "title", { min: 3, max: 120 });
+  const description = ensureString(secret?.description, "description", { min: 10, max: 2000 });
+  const category = normalizeCategory(secret?.category);
   if (!category) {
     issues.push("category no pertenece al catalogo permitido");
   }
-  const date = resolveDate(data?.date);
+  const date = resolveDate(data?.date ?? secret?.dateISO);
 
   if (issues.length > 0) {
     const message = issues.join("; ");
@@ -378,9 +432,9 @@ const validateReportPayload = (data) => {
     description,
     category,
     date,
-    ownerName: typeof data?.ownerName === "string" ? data.ownerName.trim() : null,
-    ownerEmail: typeof data?.ownerEmail === "string" ? data.ownerEmail.trim().toLowerCase() : null,
-    ownerRole: typeof data?.ownerRole === "string" ? data.ownerRole.trim() : null,
+    ownerName: coerceOwnerValue(secret?.ownerName),
+    ownerEmail: coerceOwnerValue(secret?.ownerEmail)?.toLowerCase() ?? null,
+    ownerRole: coerceOwnerValue(secret?.ownerRole),
   };
 };
 
@@ -398,7 +452,7 @@ exports.validateReporte = functions.firestore
     const now = admin.firestore.Timestamp.now();
 
     try {
-      const sanitized = validateReportPayload(data);
+      const sanitized = await validateReportPayload(data);
       await ensureSchemaFile();
       await db.collection(BITACORA_COLLECTION).add({
         entidad: "reporte",
@@ -435,14 +489,25 @@ exports.notifyOrientacion = functions.firestore
       return;
     }
 
-    const normalizedCategoryKey = typeof data.category === "string" ? data.category.trim().toLowerCase() : "";
+    let secret;
+    try {
+      secret = await extractReportSecret(data);
+    } catch (error) {
+      logger.error("No se pudo descifrar el reporte para notificar a orientacion", {
+        reportId,
+        error: error instanceof Error ? error.message : error,
+      });
+      return;
+    }
+
+    const normalizedCategoryKey = typeof secret?.category === "string" ? secret.category.trim().toLowerCase() : "";
     if (!ORIENTATION_CATEGORIES.has(normalizedCategoryKey)) {
-      logger.debug("Reporte sin notificacion obligatoria", { reportId, category: data.category });
+      logger.debug("Reporte sin notificacion obligatoria", { reportId, category: secret?.category });
       return;
     }
 
     const now = admin.firestore.Timestamp.now();
-    const categoryLabel = CATEGORY_CANONICAL[normalizedCategoryKey] ?? data.category ?? "Sin categoria";
+    const categoryLabel = CATEGORY_CANONICAL[normalizedCategoryKey] ?? secret?.category ?? "Sin categoria";
     const priority = ORIENTATION_PRIORITY[normalizedCategoryKey] ?? "media";
 
     const notificationPayload = {
@@ -454,8 +519,8 @@ exports.notifyOrientacion = functions.firestore
       destinatarios: ["orientacion"],
       creadoEn: now,
       origenUid: typeof data.uid === "string" ? data.uid : null,
-      ownerName: typeof data.ownerName === "string" ? data.ownerName : null,
-      ownerEmail: typeof data.ownerEmail === "string" ? data.ownerEmail : null,
+      ownerName: coerceOwnerValue(secret?.ownerName),
+      ownerEmail: coerceOwnerValue(secret?.ownerEmail),
     };
 
     try {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../hooks/useAuth";
 import AdminPanel from "../modules/sase310/auth/components/AdminPanel";
@@ -39,6 +39,7 @@ export const AppShell: React.FC = () => {
   const [splashDeadlineElapsed, setSplashDeadlineElapsed] = useState(false);
   const [logoutPending, setLogoutPending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const splashStartRef = useRef<number | null>(null);
 
   const isAuthPending = loading || claimsLoading;
 
@@ -46,18 +47,36 @@ export const AppShell: React.FC = () => {
     if (typeof window === "undefined") {
       return;
     }
-    if (!isAuthPending) {
-      setMinSplashElapsed(true);
+    let minTimer: number | undefined;
+    let deadlineTimer: number | undefined;
+    const MIN_SPLASH_DURATION = 10000;
+    const SPLASH_DEADLINE = 15000;
+
+    if (isAuthPending) {
+      splashStartRef.current = Date.now();
+      setMinSplashElapsed(false);
+      setSplashDeadlineElapsed(false);
+      minTimer = window.setTimeout(() => setMinSplashElapsed(true), MIN_SPLASH_DURATION);
+      deadlineTimer = window.setTimeout(() => setSplashDeadlineElapsed(true), SPLASH_DEADLINE);
+    } else {
+      const startedAt = splashStartRef.current;
+      const elapsed = startedAt ? Date.now() - startedAt : MIN_SPLASH_DURATION;
+      splashStartRef.current = null;
       setSplashDeadlineElapsed(true);
-      return;
+      if (elapsed >= MIN_SPLASH_DURATION) {
+        setMinSplashElapsed(true);
+      } else {
+        minTimer = window.setTimeout(() => setMinSplashElapsed(true), MIN_SPLASH_DURATION - elapsed);
+      }
     }
-    setMinSplashElapsed(false);
-    setSplashDeadlineElapsed(false);
-    const minTimer = window.setTimeout(() => setMinSplashElapsed(true), 1500);
-    const deadlineTimer = window.setTimeout(() => setSplashDeadlineElapsed(true), 8000);
+
     return () => {
-      window.clearTimeout(minTimer);
-      window.clearTimeout(deadlineTimer);
+      if (minTimer) {
+        window.clearTimeout(minTimer);
+      }
+      if (deadlineTimer) {
+        window.clearTimeout(deadlineTimer);
+      }
     };
   }, [isAuthPending]);
 
