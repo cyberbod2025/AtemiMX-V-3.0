@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f14" />
+      <stop offset="45%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#0b0f14" />
+    </linearGradient>
+    <radialGradient id="glow-jade" cx="20%" cy="30%" r="40%" fx="20%" fy="30%">
+      <stop offset="0%" stop-color="#0ea5a5" stop-opacity="0.65" />
+      <stop offset="100%" stop-color="#0ea5a5" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="glow-magenta" cx="80%" cy="70%" r="45%" fx="80%" fy="70%">
+      <stop offset="0%" stop-color="#e11d48" stop-opacity="0.55" />
+      <stop offset="100%" stop-color="#e11d48" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="1440" height="900" fill="url(#bg-gradient)" />
+  <circle cx="288" cy="270" r="420" fill="url(#glow-jade)" />
+  <circle cx="1152" cy="630" r="460" fill="url(#glow-magenta)" />
+  <g opacity="0.12" stroke="#e0b100" stroke-width="1">
+    <path d="M80 80h1280v30L710 820H80z" fill="none" />
+    <path d="M240 140h960v30l-480 610H240z" fill="none" opacity="0.6" />
+    <path d="M400 200h640v30l-320 400H400z" fill="none" opacity="0.45" />
+  </g>
+</svg>
