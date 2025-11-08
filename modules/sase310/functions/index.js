@@ -24,6 +24,7 @@ const BITACORA_COLLECTION = "bitacora";
 const BITACORA_SDLC_COLLECTION = "bitacora_sdlc";
 const META_COLLECTION = "_meta";
 const REPORT_COUNTER_DOC = "reportes";
+const GUARDIAN_REPORTS_COLLECTION = "guardianReports";
 
 const MAX_PROFILE_RETRIES = 5;
 const RETRY_DELAY_MS = 500;
@@ -99,6 +100,45 @@ const sanitizeAuditString = (value, fallback = null) => {
     return fallback;
   }
   return trimmed.slice(0, 180);
+};
+
+const isValidBase64 = (value) => typeof value === "string" && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
+
+const validateEncryptedGuardianPayload = (payload) => {
+  if (!payload || typeof payload !== "object") {
+    throw new functions.https.HttpsError("invalid-argument", "El payload cifrado es obligatorio.");
+  }
+  const { version, iv, ciphertext } = payload;
+  if (typeof version !== "number" || version < 1) {
+    throw new functions.https.HttpsError("invalid-argument", "La version de cifrado enviada no es valida.");
+  }
+  if (!isValidBase64(iv) || !isValidBase64(ciphertext)) {
+    throw new functions.https.HttpsError("invalid-argument", "El payload cifrado no tiene el formato esperado.");
+  }
+  return {
+    version,
+    iv,
+    ciphertext,
+  };
+};
+
+const toTimestampFromIso = (value, fallback = null) => {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return fallback;
+  }
+  return admin.firestore.Timestamp.fromDate(date);
+};
+
+const coerceDuration = (value) => {
+  if (typeof value !== "number" || Number.isNaN(value) || value <= 0) {
+    return null;
+  }
+  const capped = Math.min(Math.round(value), 12 * 60 * 60);
+  return capped;
 };
 
 async function fetchUserProfileWithRetry(uid) {
@@ -285,6 +325,90 @@ exports.logSensitiveAccess = functions.https.onCall(async (data, context) => {
     recorded: true,
     timestamp: now.toDate().toISOString(),
   };
+});
+
+exports.saveEncryptedReport = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Inicia sesion para guardar reportes cifrados.");
+  }
+
+  const payload = validateEncryptedGuardianPayload(data?.payload);
+  const now = admin.firestore.Timestamp.now();
+  const recordedAt = toTimestampFromIso(data?.recordedAtISO, now) ?? now;
+  const voiceDurationSec = coerceDuration(data?.voiceDurationSec);
+
+  const document = {
+    uid: context.auth.uid,
+    payload,
+    encryptionVersion: payload.version,
+    recordedAt,
+    createdAt: now,
+    updatedAt: now,
+    ...(voiceDurationSec ? { voiceDurationSec } : null),
+  };
+
+  const docRef = await db.collection(GUARDIAN_REPORTS_COLLECTION).add(document);
+  logger.info("Reporte de Angel Guardian almacenado", { uid: context.auth.uid, reportId: docRef.id });
+
+  return {
+    reportId: docRef.id,
+    recordedAtISO: recordedAt.toDate().toISOString(),
+    storedAtISO: now.toDate().toISOString(),
+  };
+});
+
+exports.getEncryptedReports = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Inicia sesion para consultar tus reportes cifrados.");
+  }
+
+  const snapshot = await db
+    .collection(GUARDIAN_REPORTS_COLLECTION)
+    .where("uid", "==", context.auth.uid)
+    .orderBy("recordedAt", "desc")
+    .limit(100)
+    .get();
+
+  const reports = snapshot.docs
+    .map((docSnapshot) => {
+      const docData = docSnapshot.data();
+      if (!docData?.payload) {
+        return null;
+      }
+      return {
+        id: docSnapshot.id,
+        payload: docData.payload,
+        recordedAtISO: docData.recordedAt?.toDate().toISOString() ?? null,
+        updatedAtISO: docData.updatedAt?.toDate().toISOString() ?? null,
+        voiceDurationSec: typeof docData.voiceDurationSec === "number" ? docData.voiceDurationSec : null,
+      };
+    })
+    .filter(Boolean);
+
+  return { reports };
+});
+
+exports.deleteEncryptedReport = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Inicia sesion para eliminar reportes cifrados.");
+  }
+  const reportId = typeof data?.reportId === "string" ? data.reportId.trim() : "";
+  if (!reportId) {
+    throw new functions.https.HttpsError("invalid-argument", "Debes indicar el reporte que deseas eliminar.");
+  }
+
+  const docRef = db.collection(GUARDIAN_REPORTS_COLLECTION).doc(reportId);
+  const snapshot = await docRef.get();
+  if (!snapshot.exists) {
+    throw new functions.https.HttpsError("not-found", "El reporte indicado no existe.");
+  }
+  if (snapshot.get("uid") !== context.auth.uid) {
+    throw new functions.https.HttpsError("permission-denied", "No puedes eliminar reportes de otros usuarios.");
+  }
+
+  await docRef.delete();
+  logger.info("Reporte cifrado eliminado", { uid: context.auth.uid, reportId });
+  return { deleted: true };
 });
 
 const normalizeCategory = (value) => {

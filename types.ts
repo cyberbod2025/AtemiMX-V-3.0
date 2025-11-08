@@ -44,5 +44,8 @@ export interface GuardianReport {
   title: string;
   summary: string;
   transcript: string;
+  /** ISO string con la fecha/hora de grabación */
   date: string;
+  /** Fecha ya formateada para mostrar en UI (opcional) */
+  displayDate?: string;
 }
