@@ -1,4 +1,14 @@
-type NodeBuffer = typeof import("buffer").Buffer;
+type NodeBufferLike = {
+  from: (
+    value: string | ArrayBuffer | ArrayBufferView,
+    encoding?: string,
+  ) => {
+    toString: (encoding?: string) => string;
+    buffer: ArrayBuffer;
+    byteOffset: number;
+    byteLength: number;
+  };
+};
 
 const ENCRYPTION_VERSION = 1;
 const KEY_ENV = "VITE_ENCRYPTION_MASTER_KEY";
@@ -41,12 +51,15 @@ const getCryptoSubtle = (): SubtleCrypto => {
   return cryptoRef.subtle;
 };
 
-const getNodeBuffer = (): NodeBuffer | null => {
+const getNodeBuffer = (): NodeBufferLike | null => {
   if (typeof globalThis === "undefined") {
     return null;
   }
-  const bufferCtor = (globalThis as { Buffer?: NodeBuffer }).Buffer;
-  return typeof bufferCtor === "function" ? bufferCtor : null;
+  const bufferCtor = (globalThis as { Buffer?: NodeBufferLike }).Buffer;
+  if (bufferCtor && typeof bufferCtor.from === "function") {
+    return bufferCtor;
+  }
+  return null;
 };
 
 const base64ToBytes = (value: string): Uint8Array => {

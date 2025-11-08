@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { saveData, loadData } from './services/storageService';
-import { GuardianGenAIClient } from './services/genaiClient';
-import type { GuardianReport } from './types';
+import React, { useEffect, useRef, useState } from "react";
+
+import { GuardianGenAIClient } from "./services/genaiClient";
+import type { GuardianReport } from "./types";
+import type { GuardianReportDraft } from "./services/guardianReportsService";
 
 // FIX: Add declarations for Web Speech API to prevent TypeScript errors
 // as these properties are not part of the standard DOM library typings.
@@ -11,8 +12,6 @@ declare global {
     webkitSpeechRecognition: any;
   }
 }
-
-const STORAGE_KEY = 'guardian_reports';
 
 // Check for browser support (Vitest usa entorno Node, por eso validamos `window`).
 const speechRecognitionGlobal = typeof window !== 'undefined'
@@ -26,9 +25,11 @@ const aiClient = new GuardianGenAIClient({
 
 interface Props {
   onClose: () => void;
+  onSaveReport: (draft: GuardianReportDraft) => Promise<GuardianReport>;
+  onSaved?: (report: GuardianReport) => void;
 }
 
-const AngelGuardianModal: React.FC<Props> = ({ onClose }) => {
+const AngelGuardianModal: React.FC<Props> = ({ onClose, onSaveReport, onSaved }) => {
   const [stage, setStage] = useState<'idle' | 'recording' | 'processing' | 'review'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState('');
@@ -39,6 +40,7 @@ const AngelGuardianModal: React.FC<Props> = ({ onClose }) => {
   const recognitionRef = useRef<any | null>(null);
   const [timer, setTimer] = useState(0);
   const timerIntervalRef = useRef<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     // FIX: This effect should only run once on mount. The original implementation
@@ -127,18 +129,33 @@ const AngelGuardianModal: React.FC<Props> = ({ onClose }) => {
     }
   };
   
-  const saveReport = () => {
-      if (!generatedReport) return;
-      const existingReports = loadData<GuardianReport[]>(STORAGE_KEY) || [];
-      const newReport: GuardianReport = {
-          id: `rep_${Date.now()}`,
-          title: generatedReport.title,
-          summary: generatedReport.summary,
-          transcript: finalTranscript,
-          date: new Date().toLocaleString('es-MX')
+  const persistReport = async () => {
+    if (!generatedReport) {
+      return;
+    }
+    const sanitizedTranscript = finalTranscript.trim();
+    if (!sanitizedTranscript) {
+      setError("No hay transcripción final para guardar.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const draft: GuardianReportDraft = {
+        title: generatedReport.title.trim() || "Reporte sin título",
+        summary: generatedReport.summary.trim(),
+        transcript: sanitizedTranscript,
+        date: new Date().toISOString(),
       };
-      saveData(STORAGE_KEY, [...existingReports, newReport]);
+      const saved = await onSaveReport(draft);
+      onSaved?.(saved);
       onClose();
+    } catch (saveError) {
+      console.error("[AngelGuardian] No se pudo guardar el reporte cifrado", saveError);
+      setError(saveError instanceof Error ? saveError.message : "No fue posible guardar el reporte. Intenta de nuevo.");
+      setStage("review");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -163,7 +180,10 @@ const AngelGuardianModal: React.FC<Props> = ({ onClose }) => {
         return (
           <>
             <h2 className="text-xl sm:text-2xl font-bold font-display text-[var(--accent-1)] mb-4">Activar Ángel Guardián</h2>
-            <p className="text-gray-300 mb-6">Esta función grabará el audio a través de tu micrófono y lo transcribirá. Al detenerse, la IA generará un reporte objetivo del incidente. El reporte se guardará únicamente en este dispositivo.</p>
+            <p className="text-gray-300 mb-6">
+              La grabación se transcribe en tu navegador y se cifra con AES-GCM antes de enviarse a Firestore. Solo tu
+              sesión autenticada puede descifrarlo nuevamente.
+            </p>
             <button className="btn btn-primary w-full" onClick={startRecording}>Comenzar Grabación</button>
           </>
         );
@@ -201,8 +221,10 @@ const AngelGuardianModal: React.FC<Props> = ({ onClose }) => {
                     </div>
                 )}
                 <div className="flex gap-4 mt-6">
-                    <button className="btn btn-primary flex-1" onClick={saveReport}>Guardar Reporte</button>
-                    <button className="btn btn-secondary flex-1" onClick={() => setStage('idle')}>Descartar</button>
+                    <button className="btn btn-primary flex-1 disabled:opacity-60" onClick={persistReport} disabled={isSaving}>
+                      {isSaving ? "Guardando..." : "Guardar Reporte"}
+                    </button>
+                    <button className="btn btn-secondary flex-1" onClick={() => setStage('idle')} disabled={isSaving}>Descartar</button>
                 </div>
             </>
         );
