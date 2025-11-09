@@ -23,6 +23,7 @@ interface GlobalMenuModalProps {
   onClose: () => void;
   onOpenSase: () => void;
   onShowSecurity: () => void;
+  variant?: "modal" | "floating";
 }
 
 type MenuItem = {
@@ -41,8 +42,10 @@ export const GlobalMenuModal: React.FC<GlobalMenuModalProps> = ({
   user,
   onOpenSase,
   onShowSecurity,
+  variant = "modal",
 }) => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const isFloating = variant === "floating";
 
   const menuItems = useMemo<MenuItem[]>(
     () => [
@@ -121,8 +124,13 @@ export const GlobalMenuModal: React.FC<GlobalMenuModalProps> = ({
   }
 
   return (
-    <div className="global-menu" role="dialog" aria-modal="true" aria-label="Menú general AtemiMX">
-      <div className="global-menu__backdrop" onClick={onClose} aria-hidden="true" />
+    <div
+      className={`global-menu ${isFloating ? "global-menu--floating" : ""}`}
+      role="dialog"
+      aria-modal={!isFloating}
+      aria-label="Menú general AtemiMX"
+    >
+      {!isFloating ? <div className="global-menu__backdrop" onClick={onClose} aria-hidden="true" /> : null}
       <div className="global-menu__panel">
         <header className="global-menu__header">
           <div className="global-menu__heading">

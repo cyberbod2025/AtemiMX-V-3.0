@@ -1,22 +1,28 @@
 import React, { useMemo, useState } from "react";
-import { Fingerprint, Lock, X } from "lucide-react";
+import { AlertCircle, Fingerprint, Lock, X } from "lucide-react";
+
+type PinMode = "unlock" | "setup";
 
 interface SecurityPinScreenProps {
   open: boolean;
+  mode: PinMode;
   onCancel?: () => void;
-  onAuthenticate?: (pin: string) => void;
+  onSubmit?: (pin: string) => void;
   maxDigits?: number;
   biometricLabel?: string;
+  errorMessage?: string | null;
 }
 
 const KEY_LAYOUT: Array<string | "ok" | "cancel"> = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "cancel", "0", "ok"];
 
 export const SecurityPinScreen: React.FC<SecurityPinScreenProps> = ({
   open,
+  mode,
   onCancel,
-  onAuthenticate,
+  onSubmit,
   maxDigits = 6,
   biometricLabel = "Touch ID para AtemiMX",
+  errorMessage,
 }) => {
   const [pin, setPin] = useState("");
 
@@ -28,7 +34,7 @@ export const SecurityPinScreen: React.FC<SecurityPinScreenProps> = ({
     }
     if (value === "ok") {
       if (pin.length > 0) {
-        onAuthenticate?.(pin);
+        onSubmit?.(pin);
         setPin("");
       }
       return;
@@ -43,6 +49,12 @@ export const SecurityPinScreen: React.FC<SecurityPinScreenProps> = ({
     () => Array.from({ length: maxDigits }, (_, idx) => (idx < pin.length ? "filled" : "empty")),
     [maxDigits, pin.length],
   );
+
+  const heading = mode === "setup" ? "Configura un PIN" : "Teclea tu PIN";
+  const subtitle =
+    mode === "setup"
+      ? "Define un PIN de seguridad para los próximos ingresos en este dispositivo."
+      : "Protegemos tu bitácora S-SDLC.";
 
   if (!open) {
     return null;
@@ -60,8 +72,8 @@ export const SecurityPinScreen: React.FC<SecurityPinScreenProps> = ({
         </div>
         <div className="security-pin__heading">
           <p className="security-pin__eyebrow">Sesión AtemiMX</p>
-          <h2>Teclea tu PIN</h2>
-          <p>Protegemos tu bitácora S-SDLC.</p>
+          <h2>{heading}</h2>
+          <p>{subtitle}</p>
         </div>
         <div className="security-pin__code">
           {pinIndicators.map((state, idx) => (
@@ -72,6 +84,12 @@ export const SecurityPinScreen: React.FC<SecurityPinScreenProps> = ({
             />
           ))}
         </div>
+        {errorMessage ? (
+          <div className="security-pin__error" role="alert">
+            <AlertCircle size={16} aria-hidden />
+            <span>{errorMessage}</span>
+          </div>
+        ) : null}
         <div className="security-pin__biometric">
           <div className="security-pin__biometric-card">
             <Fingerprint size={28} aria-hidden />
