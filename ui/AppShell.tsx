@@ -5,8 +5,10 @@ import AdminPanel from "../modules/sase310/auth/components/AdminPanel";
 import Sase310Module from "../modules/sase310/Sase310Module";
 import { logoutUser } from "../services/authService";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { GlobalMenuModal } from "./GlobalMenuModal";
 import { MainMenu } from "./MainMenu";
 import { Sidebar } from "./Sidebar";
+import { SecurityPinScreen } from "./SecurityPinScreen";
 import "./styles/theme.css";
 
 type ActiveView = "menu" | "sase310" | "admin";
@@ -28,6 +30,8 @@ export const AppShell: React.FC = () => {
   const [activeView, setActiveView] = useState<ActiveView>(() => getInitialView());
   const [logoutPending, setLogoutPending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [showSecurityPin, setShowSecurityPin] = useState(false);
+  const [showGlobalMenu, setShowGlobalMenu] = useState(false);
 
   const isAuthPending = loading || claimsLoading;
 
@@ -131,6 +135,14 @@ export const AppShell: React.FC = () => {
     setStatusMessage("La configuracion personalizada estara disponible proximamente.");
   };
 
+  const handleShowSecurityPin = () => {
+    setShowSecurityPin(true);
+  };
+
+  const handleShowGlobalMenu = () => {
+    setShowGlobalMenu(true);
+  };
+
   const handleLogout = async () => {
     if (logoutPending) {
       return;
@@ -165,7 +177,15 @@ export const AppShell: React.FC = () => {
     if (activeView === "sase310") {
       return <Sase310Module onNavigateHome={handleSelectMenu} />;
     }
-    return <MainMenu isAuthLoading={isAuthPending} onOpenSase={handleSelectSase} user={user} />;
+    return (
+      <MainMenu
+        isAuthLoading={isAuthPending}
+        onOpenSase={handleSelectSase}
+        onShowSecurity={handleShowSecurityPin}
+        onShowGlobalMenu={handleShowGlobalMenu}
+        user={user}
+      />
+    );
   };
 
   return (
@@ -192,6 +212,27 @@ export const AppShell: React.FC = () => {
           </main>
         </div>
       </div>
+      <SecurityPinScreen
+        open={showSecurityPin}
+        onCancel={() => setShowSecurityPin(false)}
+        onAuthenticate={() => {
+          setStatusMessage("PIN demo capturado correctamente.");
+          setShowSecurityPin(false);
+        }}
+      />
+      <GlobalMenuModal
+        open={showGlobalMenu}
+        onClose={() => setShowGlobalMenu(false)}
+        onOpenSase={() => {
+          setShowGlobalMenu(false);
+          handleSelectSase();
+        }}
+        onShowSecurity={() => {
+          setShowGlobalMenu(false);
+          handleShowSecurityPin();
+        }}
+        user={user}
+      />
     </div>
   );
 };
