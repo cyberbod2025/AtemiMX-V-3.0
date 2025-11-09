@@ -6,14 +6,15 @@ import Sase310Module from "../modules/sase310/Sase310Module";
 import { logoutUser } from "../services/authService";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { GlobalMenuModal } from "./GlobalMenuModal";
-import { MainMenu } from "./MainMenu";
+import { IdeaIntro } from "./IdeaIntro";
+import { PinPreferencesModal } from "./PinPreferencesModal";
 import { Sidebar } from "./Sidebar";
 import { SecurityPinScreen } from "./SecurityPinScreen";
 import "./styles/theme.css";
 
-type ActiveView = "menu" | "sase310" | "admin";
+type ActiveView = "none" | "menu" | "sase310" | "admin";
 
-const getInitialView = (): ActiveView => "menu";
+const getInitialView = (): ActiveView => "none";
 
 const resolvePath = (view: ActiveView): string => {
   if (view === "sase310") {
@@ -31,9 +32,19 @@ export const AppShell: React.FC = () => {
   const [logoutPending, setLogoutPending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [showSecurityPin, setShowSecurityPin] = useState(false);
+  const [pinScreenMode, setPinScreenMode] = useState<"unlock" | "setup">("unlock");
+  const [pinError, setPinError] = useState<string | null>(null);
   const [showGlobalMenu, setShowGlobalMenu] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  const [showIdeaIntro, setShowIdeaIntro] = useState(true);
+  const [pinPreferencesOpen, setPinPreferencesOpen] = useState(false);
+  const [pinEnabled, setPinEnabled] = useState(false);
+  const [storedPin, setStoredPin] = useState<string | null>(null);
+  const [requiresPinUnlock, setRequiresPinUnlock] = useState(false);
 
   const isAuthPending = loading || claimsLoading;
+  const PIN_ENABLED_KEY = "atemi:pinEnabled";
+  const PIN_VALUE_KEY = "atemi:pinValue";
 
   useEffect(() => {
     if (!statusMessage) {
@@ -53,8 +64,30 @@ export const AppShell: React.FC = () => {
     if (typeof window === "undefined") {
       return;
     }
+    const enabled = window.localStorage.getItem(PIN_ENABLED_KEY) === "true";
+    const savedPin = window.localStorage.getItem(PIN_VALUE_KEY);
+    if (enabled && savedPin) {
+      setPinEnabled(true);
+      setStoredPin(savedPin);
+      setRequiresPinUnlock(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!requiresPinUnlock) {
+      return;
+    }
+    setPinScreenMode("unlock");
+    setPinError(null);
+    setShowSecurityPin(true);
+  }, [requiresPinUnlock]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
     if (!user) {
-      setActiveView("menu");
+      setActiveView("none");
       if (window.location.pathname !== "/") {
         window.history.replaceState({}, "", "/");
       }
@@ -69,7 +102,7 @@ export const AppShell: React.FC = () => {
       setActiveView("sase310");
       return;
     }
-    setActiveView("menu");
+    setActiveView("none");
   }, [user]);
 
   useEffect(() => {
@@ -94,8 +127,8 @@ export const AppShell: React.FC = () => {
   }, [isAuthPending]);
 
   useEffect(() => {
-    if (!user && activeView === "admin") {
-      setActiveView("menu");
+    if (!user && (activeView === "admin" || activeView === "sase310")) {
+      setActiveView("none");
     }
   }, [user, activeView]);
 
@@ -103,6 +136,13 @@ export const AppShell: React.FC = () => {
 
   const handleSelectMenu = () => {
     setActiveView("menu");
+    if (typeof window !== "undefined") {
+      window.history.replaceState({}, "", "/");
+    }
+  };
+
+  const handleResetView = () => {
+    setActiveView("none");
     if (typeof window !== "undefined") {
       window.history.replaceState({}, "", "/");
     }
@@ -135,12 +175,58 @@ export const AppShell: React.FC = () => {
     setStatusMessage("La configuracion personalizada estara disponible proximamente.");
   };
 
-  const handleShowSecurityPin = () => {
+  const handlePinSubmit = (value: string) => {
+    if (pinScreenMode === "setup") {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(PIN_VALUE_KEY, value);
+        window.localStorage.setItem(PIN_ENABLED_KEY, "true");
+      }
+      setStoredPin(value);
+      setPinEnabled(true);
+      setPinError(null);
+      setShowSecurityPin(false);
+      setPinScreenMode("unlock");
+      setStatusMessage("PIN configurado correctamente.");
+      return;
+    }
+    if (storedPin && value === storedPin) {
+      setRequiresPinUnlock(false);
+      setShowSecurityPin(false);
+      setPinError(null);
+      return;
+    }
+    setPinError("PIN incorrecto. Intenta nuevamente.");
+  };
+
+  const handleDisablePin = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(PIN_VALUE_KEY);
+      window.localStorage.removeItem(PIN_ENABLED_KEY);
+    }
+    setStoredPin(null);
+    setPinEnabled(false);
+    setRequiresPinUnlock(false);
+    setPinPreferencesOpen(false);
+    setStatusMessage("PIN desactivado.");
+  };
+
+  const handleRequestPinSetup = () => {
+    setPinPreferencesOpen(false);
+    setPinScreenMode("setup");
+    setPinError(null);
     setShowSecurityPin(true);
   };
 
   const handleShowGlobalMenu = () => {
     setShowGlobalMenu(true);
+  };
+
+  const handleToggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => !prev);
+  };
+
+  const handleOpenPinPreferences = () => {
+    setPinPreferencesOpen(true);
   };
 
   const handleLogout = async () => {
@@ -160,7 +246,18 @@ export const AppShell: React.FC = () => {
     }
   };
 
+  const renderEmptyState = (message: string) => (
+    <section className="empty-state">
+      <p className="empty-state__eyebrow">AtemiMX</p>
+      <h2>{message}</h2>
+      <p>Usa el menú lateral para abrir módulos o lanzar el menú flotante.</p>
+    </section>
+  );
+
   const renderContent = () => {
+    if (activeView === "none") {
+      return renderEmptyState("Elige un módulo para comenzar");
+    }
     if (activeView === "admin") {
       if (!user || !isAdmin) {
         return (
@@ -177,15 +274,7 @@ export const AppShell: React.FC = () => {
     if (activeView === "sase310") {
       return <Sase310Module onNavigateHome={handleSelectMenu} />;
     }
-    return (
-      <MainMenu
-        isAuthLoading={isAuthPending}
-        onOpenSase={handleSelectSase}
-        onShowSecurity={handleShowSecurityPin}
-        onShowGlobalMenu={handleShowGlobalMenu}
-        user={user}
-      />
-    );
+    return renderEmptyState("Panel principal disponible desde el menú general");
   };
 
   return (
@@ -197,12 +286,16 @@ export const AppShell: React.FC = () => {
             hasSession={Boolean(user)}
             logoutPending={logoutPending}
             onSelectHome={handleSelectMenu}
+            onResetView={handleResetView}
             onSelectSase={handleSelectSase}
             onSelectAdmin={handleSelectAdmin}
             onOpenHelp={handleOpenHelp}
             onOpenSettings={handleOpenSettings}
             onLogout={handleLogout}
             canAccessAdmin={Boolean(user && isAdmin)}
+            onOpenLauncher={handleShowGlobalMenu}
+            onToggleCollapse={handleToggleSidebar}
+            isCollapsed={isSidebarCollapsed}
           />
           <main className="app-shell__main">
             {statusMessage ? <div className="app-shell__notice">{statusMessage}</div> : null}
@@ -214,11 +307,15 @@ export const AppShell: React.FC = () => {
       </div>
       <SecurityPinScreen
         open={showSecurityPin}
-        onCancel={() => setShowSecurityPin(false)}
-        onAuthenticate={() => {
-          setStatusMessage("PIN demo capturado correctamente.");
+        mode={pinScreenMode}
+        errorMessage={pinError}
+        onCancel={() => {
           setShowSecurityPin(false);
+          if (requiresPinUnlock) {
+            setShowSecurityPin(true);
+          }
         }}
+        onSubmit={handlePinSubmit}
       />
       <GlobalMenuModal
         open={showGlobalMenu}
@@ -229,10 +326,19 @@ export const AppShell: React.FC = () => {
         }}
         onShowSecurity={() => {
           setShowGlobalMenu(false);
-          handleShowSecurityPin();
+          handleOpenPinPreferences();
         }}
+        variant="floating"
         user={user}
       />
+      <PinPreferencesModal
+        open={pinPreferencesOpen}
+        pinEnabled={pinEnabled}
+        onRequestSetup={handleRequestPinSetup}
+        onDisable={handleDisablePin}
+        onClose={() => setPinPreferencesOpen(false)}
+      />
+      {showIdeaIntro ? <IdeaIntro onStart={() => setShowIdeaIntro(false)} /> : null}
     </div>
   );
 };
