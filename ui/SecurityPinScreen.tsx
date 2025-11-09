@@ -86,7 +86,9 @@ export const SecurityPinScreen: React.FC<SecurityPinScreenProps> = ({
             <button
               key={value}
               type="button"
-              className={`security-pin__key security-pin__key--${value}`}
+              className={`security-pin__key${
+                value === "ok" ? " security-pin__key--ok" : value === "cancel" ? " security-pin__key--cancel" : ""
+              }`}
               onClick={() => handleDigit(value)}
             >
               {value === "cancel" ? "Cancelar" : value === "ok" ? "OK" : value}
