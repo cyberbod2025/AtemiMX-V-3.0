@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   AlarmClockCheck,
   BellRing,
@@ -28,7 +29,7 @@ type MenuItem = {
   id: string;
   label: string;
   description: string;
-  icon: React.ComponentType<{ size?: number; ariaHidden?: boolean }>;
+  icon: LucideIcon;
   action?: () => void;
   accent?: "jade" | "magenta" | "gold";
   disabled?: boolean;
