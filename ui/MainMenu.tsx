@@ -8,9 +8,17 @@ interface MainMenuProps {
   user: User | null;
   isAuthLoading: boolean;
   onOpenSase: () => void;
+  onShowSecurity: () => void;
+  onShowGlobalMenu: () => void;
 }
 
-export const MainMenu: React.FC<MainMenuProps> = ({ user, isAuthLoading, onOpenSase }) => {
+export const MainMenu: React.FC<MainMenuProps> = ({
+  user,
+  isAuthLoading,
+  onOpenSase,
+  onShowSecurity,
+  onShowGlobalMenu,
+}) => {
   const authStatus = isAuthLoading
     ? "Validando sesión en curso..."
     : user
@@ -37,6 +45,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({ user, isAuthLoading, onOpenS
               Entrar al módulo SASE-310
             </button>
             <span className="main-menu__status">{authStatus}</span>
+            <div className="main-menu__secondary-actions">
+              <button type="button" className="main-menu__ghost-cta" onClick={onShowSecurity}>
+                Ver pantalla PIN
+              </button>
+              <button type="button" className="main-menu__ghost-cta" onClick={onShowGlobalMenu}>
+                Menú general AtemiMX
+              </button>
+            </div>
           </div>
         </div>
       </section>
