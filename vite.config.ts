@@ -17,6 +17,8 @@ export default defineConfig({
     },
   },
   build: {
+    outDir: "web-dist",
+    emptyOutDir: false,
     rollupOptions: {
       // external: [
       //   "firebase/app",

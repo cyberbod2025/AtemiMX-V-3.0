@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import ReportForm from './ReportForm';
 import ReportCard from './ReportCard';
-import { getPrefectureReports } from "../services/reportingGateway";
-import { Report, User, ReportType } from "../types";
+import { getAllReports } from '../services/mockDataService';
+import { Report, User, ReportType } from '../types';
 import { MOCK_STUDENTS } from '../constants';
 import { DocumentPlusIcon, ClockIcon, ChartBarIcon, ExclamationTriangleIcon } from './icons/SolidIcons';
 
@@ -17,8 +17,8 @@ const PrefectureDashboardView: React.FC<PrefectureDashboardViewProps> = ({ curre
   const [showForm, setShowForm] = useState(false);
 
   const fetchReports = async () => {
-    const allReports = await getPrefectureReports();
-    const reports = allReports.filter((r) => r.type === ReportType.Attendance);
+    const allReports = await getAllReports();
+    const reports = allReports.filter(r => r.type === ReportType.Attendance);
     setAttendanceReports(reports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
   };
   
@@ -36,32 +36,20 @@ const PrefectureDashboardView: React.FC<PrefectureDashboardViewProps> = ({ curre
     setAttendanceReports(prevReports => prevReports.map(r => r.id === updatedReport.id ? updatedReport : r));
   };
   
-  const resolveStudentMeta = (studentId: string) => {
-    const student = MOCK_STUDENTS.find((s) => s.id === studentId);
-    if (student) {
-      return student;
-    }
-    return { id: studentId, name: studentId, grade: "N/A", group: "" };
-  };
-
   const analyticsData = useMemo(() => {
     const byGrade = attendanceReports.reduce((acc, r) => {
-        const grade = resolveStudentMeta(r.studentId).grade || "N/A";
+        const grade = MOCK_STUDENTS.find(s => s.id === r.studentId)?.grade || 'N/A';
         acc[grade] = (acc[grade] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
-    const gradeData = (Object.entries(byGrade) as Array<[string, number]>)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const gradeData = Object.entries(byGrade).map(([name, value]) => ({ name, value })).sort((a,b) => a.name.localeCompare(b.name));
 
     const byStudent = attendanceReports.reduce((acc, r) => {
-        const studentName = resolveStudentMeta(r.studentId).name || "Desconocido";
+        const studentName = MOCK_STUDENTS.find(s => s.id === r.studentId)?.name || 'Desconocido';
         acc[studentName] = (acc[studentName] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
-    const studentData = (Object.entries(byStudent) as Array<[string, number]>)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
+    const studentData = Object.entries(byStudent).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
 
     const reincidences = studentData.filter(s => s.value > 1);
 

@@ -6,7 +6,7 @@
     "source": "modules/sase310/functions"
   },
   "hosting": {
-    "public": "dist",
+    "public": "web-dist",
     "ignore": [
       "firebase.json",
       "**/.*",

@@ -39,8 +39,8 @@ const ReportCard: React.FC<ReportCardProps> = ({ report, viewStudentProfile, onR
         const fetchNames = async () => {
             const student = await getStudentById(report.studentId);
             const teacher = await getTeacherById(report.teacherId);
-            setStudentName(student?.name || report.studentId || "Desconocido");
-            setTeacherName(teacher?.name || report.teacherId || "Desconocido");
+            setStudentName(student?.name || 'Desconocido');
+            setTeacherName(teacher?.name || 'Desconocido');
         };
         fetchNames();
     }, [report.studentId, report.teacherId]);

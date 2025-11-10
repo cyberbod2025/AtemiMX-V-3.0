@@ -1,0 +1,7 @@
+{
+  "name": "SASE-310 AtemiMX Dashboard",
+  "description": "A dashboard for Secundaria 310 to manage and track socio-emotional and disciplinary reports, replacing traditional forms with a traceable, auditable system. It features AI-powered summaries, text-to-speech, and a real-time conversational assistant powered by Gemini.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
