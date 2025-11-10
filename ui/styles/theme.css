@@ -831,7 +831,7 @@ body {
   animation: spin 1.2s linear infinite;
   box-shadow: 0 0 24px rgba(14, 165, 165, 0.35);
 }
-.splash-screen__artwork {
+
 .splash-screen__artwork {
   position: absolute;
   inset: 0;
@@ -842,9 +842,6 @@ body {
   opacity: 0.85;
   filter: drop-shadow(0 42px 92px rgba(0, 0, 0, 0.45));
 }
-.splash-screen__artwork::after {
-  content: "";
-.splash-screen__artwork video {
 
 .splash-screen__artwork::after {
   content: "";
@@ -863,6 +860,7 @@ body {
   border-radius: 28px;
   box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
 }
+
 .splash-screen__artwork video {
   background: transparent;
 }
