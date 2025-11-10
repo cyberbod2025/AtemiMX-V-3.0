@@ -13,9 +13,18 @@ interface DashboardLayoutProps {
   onViewChange: (view: string) => void;
   onUserChange: (userId: string) => void;
   allUsers: User[];
+  onLogout?: () => void;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentUser, currentView, onViewChange, onUserChange, allUsers }) => {
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({
+    children,
+    currentUser,
+    currentView,
+    onViewChange,
+    onUserChange,
+    allUsers,
+    onLogout,
+}) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [notifications, setNotifications] = useState<NotificationType[]>([]);
@@ -42,6 +51,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentUser
                 allUsers={allUsers}
                 isOpen={sidebarOpen}
                 setIsOpen={setSidebarOpen}
+                onLogout={onLogout}
             />
             <div className="flex-1 flex flex-col overflow-y-auto">
                 <header className="sticky top-0 bg-white dark:bg-gray-800 shadow-sm z-20">

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import DashboardLayout from './components/DashboardLayout';
 import TeacherDashboardView from './components/views/TeacherDashboardView';
 import GuidanceInboxView from './components/views/GuidanceInboxView';
@@ -12,17 +12,38 @@ import { User, UserRole } from './types';
 import { MOCK_USERS } from './constants';
 import useMediaQuery from './hooks/useMediaQuery';
 
-const App: React.FC = () => {
-    const [currentUserId, setCurrentUserId] = useState<string>(MOCK_USERS[0].id);
-    const [currentView, setCurrentView] = useState('teacher-dashboard');
+export interface DashboardAppProps {
+    users?: User[];
+    defaultUserId?: string;
+    defaultView?: string;
+    onLogout?: () => void;
+}
+
+const App: React.FC<DashboardAppProps> = ({ users, defaultUserId, defaultView = 'teacher-dashboard', onLogout }) => {
+    const userPool = useMemo(() => (users?.length ? users : MOCK_USERS), [users]);
+    const initialUserId = defaultUserId ?? userPool[0]?.id;
+    const [currentUserId, setCurrentUserId] = useState<string>(initialUserId);
+    const [currentView, setCurrentView] = useState(defaultView);
     const [studentProfileId, setStudentProfileId] = useState<string | null>(null);
 
     const isMobile = useMediaQuery('(max-width: 768px)');
     
-    const currentUser = MOCK_USERS.find(u => u.id === currentUserId) || MOCK_USERS[0];
+    useEffect(() => {
+        if (defaultUserId) {
+            setCurrentUserId(defaultUserId);
+        }
+    }, [defaultUserId]);
+
+    useEffect(() => {
+        if (defaultView) {
+            setCurrentView(defaultView);
+        }
+    }, [defaultView]);
+
+    const currentUser = userPool.find(u => u.id === currentUserId) || userPool[0];
 
     const handleUserChange = (userId: string) => {
-        const user = MOCK_USERS.find(u => u.id === userId);
+        const user = userPool.find(u => u.id === userId);
         if (user) {
             setCurrentUserId(userId);
             switch (user.role) {
@@ -93,7 +114,8 @@ const App: React.FC = () => {
             currentView={currentView}
             onViewChange={handleViewChange}
             onUserChange={handleUserChange}
-            allUsers={MOCK_USERS}
+            allUsers={userPool}
+            onLogout={onLogout}
         >
             {renderView()}
         </DashboardLayout>

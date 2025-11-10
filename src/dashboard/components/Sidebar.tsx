@@ -24,6 +24,7 @@ interface SidebarProps {
     allUsers: User[];
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
+    onLogout?: () => void;
 }
 
 const getNavItems = (user: User) => {
@@ -58,7 +59,16 @@ const getNavItems = (user: User) => {
     }
 };
 
-const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, onViewChange, onUserChange, allUsers, isOpen, setIsOpen }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+    currentUser,
+    currentView,
+    onViewChange,
+    onUserChange,
+    allUsers,
+    isOpen,
+    setIsOpen,
+    onLogout,
+}) => {
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
     const navItems = getNavItems(currentUser);
     const isMobile = useMediaQuery('(max-width: 767px)');
@@ -134,7 +144,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, onViewChang
 
             {/* Footer */}
             <div className="p-4 border-t dark:border-gray-700">
-                <button className="w-full flex items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                <button
+                    className="w-full flex items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                    onClick={onLogout}
+                    disabled={!onLogout}
+                >
                     <ArrowLeftOnRectangleIcon className="h-6 w-6 mr-3" />
                     <span className="font-medium">Cerrar Sesión</span>
                 </button>
