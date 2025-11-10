@@ -1,8 +1,5 @@
 import React from "react";
 import type { User } from "firebase/auth";
-import { CalendarClock, Notebook, ShieldCheck } from "lucide-react";
-
-import { DEPARTMENT_BRANDS, GENERAL_BRANDING } from "../branding";
 
 interface MainMenuProps {
   user: User | null;
@@ -11,6 +8,12 @@ interface MainMenuProps {
   onShowSecurity: () => void;
   onShowGlobalMenu: () => void;
 }
+
+const NAV_ITEMS = [
+  { id: "panel", label: "Panel principal", badge: null },
+  { id: "cuaderno", label: "Cuaderno", badge: "PRONTO" },
+  { id: "planeaciones", label: "Planeaciones", badge: "PRONTO" },
+];
 
 export const MainMenu: React.FC<MainMenuProps> = ({
   user,
@@ -25,77 +28,74 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       ? `Sesión activa como ${user.displayName ?? user.email ?? "usuario"}.`
       : "Inicia sesión dentro del módulo SASE-310 para continuar.";
 
-  const heroBrand = GENERAL_BRANDING;
-
   return (
-    <div className="main-menu main-menu--landing">
-      <section className="main-menu__hero">
-        <figure className="main-menu__brand">
-          <img src={heroBrand.image} alt={heroBrand.label} />
-          <figcaption>{heroBrand.caption ?? "Arquitectura S-SDLC"}</figcaption>
-        </figure>
-        <div className="main-menu__hero-copy">
-          <span className="main-menu__eyebrow">SASE-310 · AtemiMX</span>
-          <h1 className="main-menu__headline">Gestiona el bienestar escolar con trazabilidad total</h1>
-          <p className="main-menu__description">
-            Centraliza reportes socioemocionales, disciplina y seguimiento institucional en un hub diseñado para la comunidad educativa.
-          </p>
-          <div className="main-menu__actions">
-            <button type="button" className="main-menu__primary-cta" onClick={onOpenSase}>
+    <div className="landing-shell">
+      <aside className="landing-sidebar">
+        <div>
+          <div className="landing-brand">
+            <div>
+              <p className="landing-brand__eyebrow">Atemi</p>
+              <h2 className="landing-brand__name">MX</h2>
+            </div>
+            <span className="landing-brand__version">v3.6</span>
+          </div>
+          <nav className="landing-nav">
+            {NAV_ITEMS.map((item) => (
+              <button key={item.id} type="button" className="landing-nav__item landing-nav__item--disabled">
+                <span>{item.label}</span>
+                {item.badge ? <span className="landing-nav__badge">{item.badge}</span> : null}
+              </button>
+            ))}
+            <div className="landing-nav__divider" />
+            <button type="button" className="landing-nav__item landing-nav__item--accent" onClick={onOpenSase}>
+              <span>SASE-310</span>
+              <span className="landing-nav__badge landing-nav__badge--accent">LOGIN</span>
+            </button>
+          </nav>
+        </div>
+        <footer className="landing-sidebar__footer">
+          <p className="landing-sidebar__status">{authStatus}</p>
+          <div className="landing-sidebar__actions">
+            <button type="button" className="landing-sidebar__ghost" onClick={onShowSecurity}>
+              Ver pantalla PIN
+            </button>
+            <button type="button" className="landing-sidebar__ghost" onClick={onShowGlobalMenu}>
+              Menú general AtemiMX
+            </button>
+          </div>
+          <button type="button" className="landing-sidebar__cta" onClick={onOpenSase}>
+            Ingresar con cuenta institucional
+          </button>
+        </footer>
+      </aside>
+
+      <section className="landing-stage">
+        <div className="landing-stage__card">
+          <header className="landing-stage__header">
+            <div className="landing-stage__logo">
+              <span>AM</span>
+            </div>
+            <div className="landing-stage__label">
+              <p>ARQUITECTURA S-SDLC</p>
+              <span>SASE-310 · ATEMIMX</span>
+            </div>
+          </header>
+          <div className="landing-stage__body">
+            <h1>Gestiona el bienestar escolar con trazabilidad total</h1>
+            <p>
+              Centraliza reportes socioemocionales, disciplina y seguimiento institucional en un hub diseñado para la comunidad
+              educativa.
+            </p>
+          </div>
+          <div className="landing-stage__actions">
+            <button type="button" className="landing-stage__primary" onClick={onOpenSase}>
               Entrar al módulo SASE-310
             </button>
-            <span className="main-menu__status">{authStatus}</span>
-            <div className="main-menu__secondary-actions">
-              <button type="button" className="main-menu__ghost-cta" onClick={onShowSecurity}>
-                Ver pantalla PIN
-              </button>
-              <button type="button" className="main-menu__ghost-cta" onClick={onShowGlobalMenu}>
-                Menú general AtemiMX
-              </button>
-            </div>
+            <button type="button" className="landing-stage__ghost" onClick={onShowGlobalMenu}>
+              Explorar novedades
+            </button>
           </div>
         </div>
-      </section>
-
-      <section className="department-brand-grid" aria-label="Departamentos Atemi">
-        {DEPARTMENT_BRANDS.map((brand) => (
-          <figure key={brand.key} className="department-brand">
-            <img src={brand.image} alt={brand.label} loading="lazy" />
-            <figcaption>{brand.label}</figcaption>
-          </figure>
-        ))}
-      </section>
-
-      <section className="main-menu__grid">
-        <article className="module-card module-card--primary">
-          <header>
-            <ShieldCheck size={28} aria-hidden />
-            <span className="module-card__tag module-card__tag--accent">SASE-310</span>
-          </header>
-          <h3>Reportes y seguimiento</h3>
-          <p>Administra incidencias, estados y evidencia por rol con controles S-SDLC.</p>
-          <button type="button" className="module-card__cta" onClick={onOpenSase}>
-            Acceder al módulo
-          </button>
-        </article>
-
-        <article className="module-card module-card--disabled">
-          <header>
-            <Notebook size={28} aria-hidden />
-            <span className="module-card__tag">Próximamente</span>
-          </header>
-          <h3>Cuaderno digital</h3>
-          <p>Planea y organiza clases con seguimiento inteligente de grupo.</p>
-        </article>
-
-        <article className="module-card module-card--disabled">
-          <header>
-            <CalendarClock size={28} aria-hidden />
-            <span className="module-card__tag">Próximamente</span>
-          </header>
-          <h3>Planeaciones</h3>
-          <p>Diseña experiencias de aprendizaje con evaluaciones formativas integradas.</p>
-        </article>
       </section>
     </div>
   );
