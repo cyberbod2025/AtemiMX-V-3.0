@@ -2,10 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import ReportForm from '../ReportForm';
 import ReportCard from '../ReportCard';
-import { getReportsByTeacher } from "../../services/mockDataService";
+import { getReportsByTeacher } from '../../services/mockDataService';
 import { Report, User, ReportType, ReportStatus } from '../../types';
 import { DocumentPlusIcon, ClockIcon, ChartBarIcon } from '../icons/SolidIcons';
-import { GradebookPanel } from '../../modules/gradebook/GradebookPanel';
 
 interface TeacherDashboardViewProps {
   currentUser: User;
@@ -53,8 +52,6 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ currentUser
 
   return (
     <div className="space-y-8">
-      <GradebookPanel teacherId={currentUser.id} />
-
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Mi Panel</h2>
         <button

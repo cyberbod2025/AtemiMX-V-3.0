@@ -1,50 +1,28 @@
-import React, { useState, useCallback, useMemo, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useCallback } from 'react';
 import DashboardLayout from './components/DashboardLayout';
+import TeacherDashboardView from './components/views/TeacherDashboardView';
+import GuidanceInboxView from './components/views/GuidanceInboxView';
+import StudentProfileView from './components/views/StudentProfileView';
+import AdminDashboardView from './components/views/AdminDashboardView';
+import LiveAssistantView from './components/views/LiveAssistantView';
+import PrefectureDashboardView from './components/PrefectureDashboardView';
+import TutorDashboardView from './components/views/TutorDashboardView';
+import MobileTeacherView from './components/views/MobileTeacherView';
 import { User, UserRole } from './types';
 import { MOCK_USERS } from './constants';
 import useMediaQuery from './hooks/useMediaQuery';
 
-const TeacherDashboardView = lazy(() => import('./components/views/TeacherDashboardView'));
-const GuidanceInboxView = lazy(() => import('./components/views/GuidanceInboxView'));
-const StudentProfileView = lazy(() => import('./components/views/StudentProfileView'));
-const AdminDashboardView = lazy(() => import('./components/views/AdminDashboardView'));
-const LiveAssistantView = lazy(() => import('./components/views/LiveAssistantView'));
-const PrefectureDashboardView = lazy(() => import('./components/PrefectureDashboardView'));
-const TutorDashboardView = lazy(() => import('./components/views/TutorDashboardView'));
-const MobileTeacherView = lazy(() => import('./components/views/MobileTeacherView'));
-
-export interface DashboardAppProps {
-    users?: User[];
-    defaultUserId?: string;
-    defaultView?: string;
-    onLogout?: () => void;
-}
-
-const App: React.FC<DashboardAppProps> = ({ users, defaultUserId, defaultView = 'teacher-dashboard', onLogout }) => {
-    const userPool = useMemo(() => (users?.length ? users : MOCK_USERS), [users]);
-    const initialUserId = defaultUserId ?? userPool[0]?.id;
-    const [currentUserId, setCurrentUserId] = useState<string>(initialUserId);
-    const [currentView, setCurrentView] = useState(defaultView);
+const App: React.FC = () => {
+    const [currentUserId, setCurrentUserId] = useState<string>(MOCK_USERS[0].id);
+    const [currentView, setCurrentView] = useState('teacher-dashboard');
     const [studentProfileId, setStudentProfileId] = useState<string | null>(null);
 
     const isMobile = useMediaQuery('(max-width: 768px)');
     
-    useEffect(() => {
-        if (defaultUserId) {
-            setCurrentUserId(defaultUserId);
-        }
-    }, [defaultUserId]);
-
-    useEffect(() => {
-        if (defaultView) {
-            setCurrentView(defaultView);
-        }
-    }, [defaultView]);
-
-    const currentUser = userPool.find(u => u.id === currentUserId) || userPool[0];
+    const currentUser = MOCK_USERS.find(u => u.id === currentUserId) || MOCK_USERS[0];
 
     const handleUserChange = (userId: string) => {
-        const user = userPool.find(u => u.id === userId);
+        const user = MOCK_USERS.find(u => u.id === userId);
         if (user) {
             setCurrentUserId(userId);
             switch (user.role) {
@@ -115,12 +93,9 @@ const App: React.FC<DashboardAppProps> = ({ users, defaultUserId, defaultView = 
             currentView={currentView}
             onViewChange={handleViewChange}
             onUserChange={handleUserChange}
-            allUsers={userPool}
-            onLogout={onLogout}
+            allUsers={MOCK_USERS}
         >
-            <Suspense fallback={<div className="card">Cargando módulo...</div>}>
-                {renderView()}
-            </Suspense>
+            {renderView()}
         </DashboardLayout>
     );
 };
