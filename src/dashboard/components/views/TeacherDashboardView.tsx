@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import ReportForm from '../ReportForm';
 import ReportCard from '../ReportCard';
@@ -6,6 +6,7 @@ import { getReportsByTeacher } from "../../services/mockDataService";
 import { Report, User, ReportType, ReportStatus } from '../../types';
 import { DocumentPlusIcon, ClockIcon, ChartBarIcon } from '../icons/SolidIcons';
 import { GradebookPanel } from '../../modules/gradebook/GradebookPanel';
+import { PlannerPanel } from "../PlannerPanel";
 
 interface TeacherDashboardViewProps {
   currentUser: User;
@@ -18,18 +19,14 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ currentUser
   const [myReports, setMyReports] = useState<Report[]>([]);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => {
-    const fetchReports = async () => {
-      const reports = await getReportsByTeacher(currentUser.id);
-      setMyReports(reports.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    };
-    fetchReports();
+  const fetchReports = useCallback(async () => {
+    const reports = await getReportsByTeacher(currentUser.id);
+    setMyReports(reports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
   }, [currentUser.id]);
-  
-  const handleReportSubmitted = (newReport: Report) => {
-    setMyReports(prevReports => [newReport, ...prevReports]);
-    setShowForm(false);
-  };
+
+  useEffect(() => {
+    void fetchReports();
+  }, [fetchReports]);
   
   const handleReportUpdate = (updatedReport: Report) => {
     setMyReports(prevReports => prevReports.map(r => r.id === updatedReport.id ? updatedReport : r));
@@ -54,6 +51,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ currentUser
   return (
     <div className="space-y-8">
       <GradebookPanel teacherId={currentUser.id} />
+      <PlannerPanel teacher={currentUser} />
 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Mi Panel</h2>
@@ -68,7 +66,13 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ currentUser
 
       {showForm && (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg animate-fade-in-down">
-          <ReportForm currentUser={currentUser} onReportSubmit={handleReportSubmitted} />
+          <ReportForm
+            currentUser={currentUser}
+            onCreated={() => {
+              setShowForm(false);
+              void fetchReports();
+            }}
+          />
         </div>
       )}
 

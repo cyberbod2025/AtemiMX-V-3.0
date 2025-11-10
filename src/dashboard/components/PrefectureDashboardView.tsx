@@ -36,17 +36,20 @@ const PrefectureDashboardView: React.FC<PrefectureDashboardViewProps> = ({ curre
     setAttendanceReports(prevReports => prevReports.map(r => r.id === updatedReport.id ? updatedReport : r));
   };
   
-  const resolveStudentMeta = (studentId: string) => {
-    const student = MOCK_STUDENTS.find((s) => s.id === studentId);
+  const resolveStudentMeta = (report: Report) => {
+    if (report.studentName) {
+      return { id: report.studentId, name: report.studentName, grade: "", group: "" };
+    }
+    const student = MOCK_STUDENTS.find((s) => s.id === report.studentId);
     if (student) {
       return student;
     }
-    return { id: studentId, name: studentId, grade: "N/A", group: "" };
+    return { id: report.studentId, name: report.studentId, grade: "N/A", group: "" };
   };
 
   const analyticsData = useMemo(() => {
     const byGrade = attendanceReports.reduce((acc, r) => {
-        const grade = resolveStudentMeta(r.studentId).grade || "N/A";
+        const grade = resolveStudentMeta(r).grade || "N/A";
         acc[grade] = (acc[grade] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
@@ -55,7 +58,7 @@ const PrefectureDashboardView: React.FC<PrefectureDashboardViewProps> = ({ curre
       .sort((a, b) => a.name.localeCompare(b.name));
 
     const byStudent = attendanceReports.reduce((acc, r) => {
-        const studentName = resolveStudentMeta(r.studentId).name || "Desconocido";
+        const studentName = resolveStudentMeta(r).name || "Desconocido";
         acc[studentName] = (acc[studentName] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);

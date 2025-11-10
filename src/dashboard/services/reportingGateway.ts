@@ -1,14 +1,16 @@
+import { ReportPriority, ReportStatus, ReportType } from "@/dashboard/types";
+import type { Report as DashboardReport, User } from "@/dashboard/types";
 import {
-  ReportPriority,
-  ReportStatus,
-  ReportType,
-  type Report as DashboardReport,
-} from "@/dashboard/types";
-import {
+  createReport as createSaseReport,
   getAllReports as fetchSaseReports,
   getReportsByUser,
   type Report as SaseReport,
 } from "../../../modules/sase310/firestoreService";
+import {
+  fetchIncidentMetadataByTeacher,
+  fetchAllIncidentMetadata,
+  upsertIncidentMetadata,
+} from "./incidentMetaService";
 import { getReportsByTeacher as getMockReportsByTeacher, getAllReports as getMockAllReports } from "./mockDataService";
 
 const CATEGORY_MAP: Record<string, ReportType> = {
@@ -41,10 +43,61 @@ const toDashboardReport = (report: SaseReport): DashboardReport => ({
   evidence: [],
 });
 
+export const submitIncidentReport = async (payload: {
+  teacher: User;
+  studentId: string;
+  studentName: string;
+  subject: string;
+  description: string;
+  actionsTaken: string;
+  type: ReportType;
+}): Promise<DashboardReport> => {
+  const nowISO = new Date().toISOString();
+  const saseReport = await createSaseReport(
+    {
+      title: payload.subject || payload.type,
+      description: `${payload.description}\n\nAcciones inmediatas: ${payload.actionsTaken}`,
+      date: nowISO,
+      category: payload.type,
+      uid: payload.teacher.id,
+    },
+    {
+      name: payload.teacher.name,
+      email: (payload as unknown as { email?: string }).email ?? null,
+      role: payload.teacher.role,
+    },
+  );
+
+  const dashboardReport: DashboardReport = {
+    id: saseReport.id,
+    studentId: payload.studentId,
+    teacherId: payload.teacher.id,
+    date: nowISO,
+    type: payload.type,
+    subject: payload.subject,
+    description: payload.description,
+    status: ReportStatus.New,
+    priority: ReportPriority.Medium,
+    actionsTaken: payload.actionsTaken,
+    comments: [],
+    evidence: [],
+  };
+
+  await upsertIncidentMetadata(dashboardReport);
+  return dashboardReport;
+};
+
 export const getTeacherReports = async (teacherId: string): Promise<DashboardReport[]> => {
   try {
-    const reports = await getReportsByUser(teacherId);
-    return reports.map(toDashboardReport);
+    const [metadata, saseReports] = await Promise.all([
+      fetchIncidentMetadataByTeacher(teacherId),
+      getReportsByUser(teacherId),
+    ]);
+    const metaMap = new Map(metadata.map((report) => [report.id, report]));
+    const merged = saseReports.map((report) => metaMap.get(report.id) ?? toDashboardReport(report));
+    const mergedIds = new Set(saseReports.map((report) => report.id));
+    const extras = metadata.filter((report) => !mergedIds.has(report.id));
+    return [...extras, ...merged];
   } catch (error) {
     console.error("[Dashboard] Falling back to mock reports for teacher", error);
     const fallback = await getMockReportsByTeacher(teacherId);
@@ -54,8 +107,12 @@ export const getTeacherReports = async (teacherId: string): Promise<DashboardRep
 
 export const getPrefectureReports = async (): Promise<DashboardReport[]> => {
   try {
-    const reports = await fetchSaseReports();
-    return reports.map(toDashboardReport);
+    const [metadata, saseReports] = await Promise.all([fetchAllIncidentMetadata(), fetchSaseReports()]);
+    const metaMap = new Map(metadata.map((report) => [report.id, report]));
+    const merged = saseReports.map((report) => metaMap.get(report.id) ?? toDashboardReport(report));
+    const mergedIds = new Set(saseReports.map((report) => report.id));
+    const extras = metadata.filter((report) => !mergedIds.has(report.id));
+    return [...extras, ...merged];
   } catch (error) {
     console.error("[Dashboard] Falling back to mock reports set", error);
     const fallback = await getMockAllReports();

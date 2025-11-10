@@ -37,6 +37,7 @@ export const AtemiDashboard: React.FC<AtemiDashboardProps> = ({ user, role, onLo
     const authUser: DashboardUser = {
       id: user.uid ?? "auth-user",
       name: user.displayName ?? user.email ?? "Docente Atemi",
+      email: user.email ?? undefined,
       role: mappedRole,
       tutorOfGroup: mappedRole === UserRole.Teacher ? { grade: "3", group: "A" } : null,
     };
