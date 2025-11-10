@@ -4,7 +4,7 @@ import { GENERAL_BRANDING } from "../branding";
 
 const DEFAULT_BRAND_IMAGE = GENERAL_BRANDING.image;
 const DEFAULT_BRAND_LABEL = GENERAL_BRANDING.label;
-const DEFAULT_ARTWORK_VIDEO = "/branding/INTRO SPLASH.mp4?v=20251103";
+const DEFAULT_ARTWORK_VIDEO = "/branding/INTRO FINAL.mp4?v=20251108";
 
 interface SplashScreenProps {
   title?: string;
