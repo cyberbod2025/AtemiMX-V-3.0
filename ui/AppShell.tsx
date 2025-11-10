@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import AdminPanel from "../modules/sase310/auth/components/AdminPanel";
 import Sase310Module from "../modules/sase310/Sase310Module";
-import { UnifiedDashboard } from "@/modules/unified-dashboard/UnifiedDashboard";
 import { logoutUser } from "../services/authService";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { GlobalMenuModal } from "./GlobalMenuModal";
@@ -12,10 +11,11 @@ import { PinPreferencesModal } from "./PinPreferencesModal";
 import { Sidebar } from "./Sidebar";
 import { SecurityPinScreen } from "./SecurityPinScreen";
 import "./styles/theme.css";
+import { AtemiDashboard } from "./AtemiDashboard";
 
 type ActiveView = "none" | "menu" | "sase310" | "admin";
 
-const getInitialView = (): ActiveView => "none";
+const getInitialView = (): ActiveView => "menu";
 
 const resolvePath = (view: ActiveView): string => {
   if (view === "sase310") {
@@ -28,7 +28,7 @@ const resolvePath = (view: ActiveView): string => {
 };
 
 export const AppShell: React.FC = () => {
-  const { user, loading, claimsLoading, role, visualRole, claimsError } = useAuth();
+  const { user, loading, claimsLoading, role, claimsError } = useAuth();
   const [activeView, setActiveView] = useState<ActiveView>(() => getInitialView());
   const [logoutPending, setLogoutPending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -88,7 +88,7 @@ export const AppShell: React.FC = () => {
       return;
     }
     if (!user) {
-      setActiveView("none");
+      setActiveView("menu");
       if (window.location.pathname !== "/") {
         window.history.replaceState({}, "", "/");
       }
@@ -103,7 +103,7 @@ export const AppShell: React.FC = () => {
       setActiveView("sase310");
       return;
     }
-    setActiveView("none");
+    setActiveView("menu");
   }, [user]);
 
   useEffect(() => {
@@ -129,11 +129,12 @@ export const AppShell: React.FC = () => {
 
   useEffect(() => {
     if (!user && (activeView === "admin" || activeView === "sase310")) {
-      setActiveView("none");
+      setActiveView("menu");
     }
   }, [user, activeView]);
 
   const isAdmin = useMemo(() => (role ?? "").toLowerCase() === "admin", [role]);
+  const isDashboardActive = activeView === "menu";
 
   const handleSelectMenu = () => {
     setActiveView("menu");
@@ -143,7 +144,7 @@ export const AppShell: React.FC = () => {
   };
 
   const handleResetView = () => {
-    setActiveView("none");
+    setActiveView("menu");
     if (typeof window !== "undefined") {
       window.history.replaceState({}, "", "/");
     }
@@ -158,7 +159,7 @@ export const AppShell: React.FC = () => {
 
   const handleSelectAdmin = () => {
     if (!isAdmin) {
-      setStatusMessage("No cuentas con permisos de administraci�n para acceder a esta secci�n.");
+      setStatusMessage("No cuentas con permisos de administraciï¿½n para acceder a esta secciï¿½n.");
       handleSelectMenu();
       return;
     }
@@ -259,27 +260,13 @@ export const AppShell: React.FC = () => {
     if (activeView === "none") {
       return renderEmptyState("Elige un módulo para comenzar");
     }
-    if (activeView === "menu") {
-      return (
-        <UnifiedDashboard
-          displayName={user?.displayName ?? user?.email ?? undefined}
-          visualRole={visualRole ?? "none"}
-          onOpenLauncher={handleShowGlobalMenu}
-          onOpenSase={handleSelectSase}
-          onOpenAdmin={handleSelectAdmin}
-          onShowSecurity={handleOpenPinPreferences}
-          hasSession={Boolean(user)}
-          canAccessAdmin={Boolean(user && isAdmin)}
-        />
-      );
-    }
     if (activeView === "admin") {
       if (!user || !isAdmin) {
         return (
           <section className="card">
             <h2 className="text-lg font-display text-white">Acceso restringido</h2>
             <p className="text-sm text-gray-400">
-              Necesitas permisos de administraci�n para ingresar a este panel.
+              Necesitas permisos de administración para ingresar a este panel.
             </p>
           </section>
         );
@@ -292,34 +279,47 @@ export const AppShell: React.FC = () => {
     return renderEmptyState("Panel principal disponible desde el menú general");
   };
 
-  return (
-    <div className="app-shell">
-      <div className="app-shell__layer">
-        <div className="app-shell__layout">
-          <Sidebar
-            activeView={activeView}
-            hasSession={Boolean(user)}
-            logoutPending={logoutPending}
-            onSelectHome={handleSelectMenu}
-            onResetView={handleResetView}
-            onSelectSase={handleSelectSase}
-            onSelectAdmin={handleSelectAdmin}
-            onOpenHelp={handleOpenHelp}
-            onOpenSettings={handleOpenSettings}
-            onLogout={handleLogout}
-            canAccessAdmin={Boolean(user && isAdmin)}
-            onOpenLauncher={handleShowGlobalMenu}
-            onToggleCollapse={handleToggleSidebar}
-            isCollapsed={isSidebarCollapsed}
-          />
-          <main className="app-shell__main">
-            {statusMessage ? <div className="app-shell__notice">{statusMessage}</div> : null}
-            <ErrorBoundary>
-              <div className="app-shell__content">{renderContent()}</div>
-            </ErrorBoundary>
-          </main>
-        </div>
+
+
+  const renderLegacyShell = () => (
+    <div className="app-shell__layer">
+      <div className="app-shell__layout">
+        <Sidebar
+          activeView={activeView}
+          hasSession={Boolean(user)}
+          logoutPending={logoutPending}
+          onSelectHome={handleSelectMenu}
+          onResetView={handleResetView}
+          onSelectSase={handleSelectSase}
+          onSelectAdmin={handleSelectAdmin}
+          onOpenHelp={handleOpenHelp}
+          onOpenSettings={handleOpenSettings}
+          onLogout={handleLogout}
+          canAccessAdmin={Boolean(user && isAdmin)}
+          onOpenLauncher={handleShowGlobalMenu}
+          onToggleCollapse={handleToggleSidebar}
+          isCollapsed={isSidebarCollapsed}
+        />
+        <main className="app-shell__main">
+          {statusMessage ? <div className="app-shell__notice">{statusMessage}</div> : null}
+          <ErrorBoundary>
+            <div className="app-shell__content">{renderContent()}</div>
+          </ErrorBoundary>
+        </main>
       </div>
+    </div>
+  );
+
+  const renderDashboardShell = () => (
+    <div className="dashboard-wrapper">
+      {statusMessage ? <div className="app-shell__notice dashboard-wrapper__notice">{statusMessage}</div> : null}
+      <AtemiDashboard user={user} role={role ?? null} onLogout={handleLogout} />
+    </div>
+  );
+
+  return (
+    <div className={`app-shell${isDashboardActive ? " app-shell--dashboard" : ""}`}>
+      {isDashboardActive ? renderDashboardShell() : renderLegacyShell()}
       <SecurityPinScreen
         open={showSecurityPin}
         mode={pinScreenMode}

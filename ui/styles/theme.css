@@ -1980,3 +1980,17 @@ body {
     order: 1;
   }
 }
+
+.app-shell--dashboard {
+  background: var(--color-bg);
+}
+
+.dashboard-wrapper {
+  width: 100%;
+  min-height: 100vh;
+  padding: 2rem 0;
+}
+
+.dashboard-wrapper__notice {
+  margin: 0 auto 1rem;
+}
