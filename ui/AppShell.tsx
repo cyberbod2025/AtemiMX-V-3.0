@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import AdminPanel from "../modules/sase310/auth/components/AdminPanel";
 import Sase310Module from "../modules/sase310/Sase310Module";
+import { UnifiedDashboard } from "@/modules/unified-dashboard/UnifiedDashboard";
 import { logoutUser } from "../services/authService";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { GlobalMenuModal } from "./GlobalMenuModal";
@@ -27,7 +28,7 @@ const resolvePath = (view: ActiveView): string => {
 };
 
 export const AppShell: React.FC = () => {
-  const { user, loading, claimsLoading, role, claimsError } = useAuth();
+  const { user, loading, claimsLoading, role, visualRole, claimsError } = useAuth();
   const [activeView, setActiveView] = useState<ActiveView>(() => getInitialView());
   const [logoutPending, setLogoutPending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -257,6 +258,20 @@ export const AppShell: React.FC = () => {
   const renderContent = () => {
     if (activeView === "none") {
       return renderEmptyState("Elige un módulo para comenzar");
+    }
+    if (activeView === "menu") {
+      return (
+        <UnifiedDashboard
+          displayName={user?.displayName ?? user?.email ?? undefined}
+          visualRole={visualRole ?? "none"}
+          onOpenLauncher={handleShowGlobalMenu}
+          onOpenSase={handleSelectSase}
+          onOpenAdmin={handleSelectAdmin}
+          onShowSecurity={handleOpenPinPreferences}
+          hasSession={Boolean(user)}
+          canAccessAdmin={Boolean(user && isAdmin)}
+        />
+      );
     }
     if (activeView === "admin") {
       if (!user || !isAdmin) {
