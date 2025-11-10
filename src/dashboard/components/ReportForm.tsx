@@ -1,52 +1,55 @@
 import React, { useState } from 'react';
-import { User, Report, ReportType, ReportStatus, ReportPriority } from '../types';
-import { MOCK_STUDENTS } from '../constants';
-import AudioTranscriptionButton from './AudioTranscriptionButton';
+
+import { User, ReportType } from "../types";
+import { MOCK_STUDENTS } from "../constants";
+import AudioTranscriptionButton from "./AudioTranscriptionButton";
+import { submitIncidentReport } from "../services/reportingGateway";
 
 interface ReportFormProps {
   currentUser: User;
-  onReportSubmit: (report: Report) => void;
+  onCreated?: () => void;
 }
 
-const ReportForm: React.FC<ReportFormProps> = ({ currentUser, onReportSubmit }) => {
+const ReportForm: React.FC<ReportFormProps> = ({ currentUser, onCreated }) => {
   const [studentId, setStudentId] = useState('');
   const [subject, setSubject] = useState('');
   const [reportType, setReportType] = useState<ReportType>(ReportType.Disciplinary);
   const [description, setDescription] = useState('');
   const [actionsTaken, setActionsTaken] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // FIX: Added subject to the validation to ensure it's not empty.
     if (!studentId || !subject || !description || !actionsTaken) {
-      alert('Por favor completa todos los campos.');
+      setError("Por favor completa todos los campos.");
       return;
     }
-
-    // FIX: Added 'subject' property to the new report object to match the Report interface.
-    // FIX: Added missing 'comments' and 'evidence' properties to satisfy the Report interface.
-    const newReport: Report = {
-      id: `report-${Date.now()}`,
-      studentId,
-      teacherId: currentUser.id,
-      date: new Date().toISOString(),
-      type: reportType,
-      subject: subject,
-      description,
-      status: ReportStatus.New,
-      priority: ReportPriority.Medium, // Default priority, could be determined by Gemini later
-      actionsTaken,
-      comments: [],
-      evidence: [],
-    };
-
-    onReportSubmit(newReport);
-    // Reset form
-    setStudentId('');
-    setSubject('');
-    setReportType(ReportType.Disciplinary);
-    setDescription('');
-    setActionsTaken('');
+    const student = MOCK_STUDENTS.find((s) => s.id === studentId);
+    setSubmitting(true);
+    setError(null);
+    try {
+      await submitIncidentReport({
+        teacher: currentUser,
+        studentId,
+        studentName: student?.name ?? "Alumno sin registro",
+        subject,
+        description,
+        actionsTaken,
+        type: reportType,
+      });
+      setStudentId("");
+      setSubject("");
+      setReportType(ReportType.Disciplinary);
+      setDescription("");
+      setActionsTaken("");
+      onCreated?.();
+    } catch (err) {
+      console.error("[ReportForm] No se pudo registrar el reporte", err);
+      setError("No pudimos enviar el reporte. Intenta de nuevo.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDescriptionTranscription = (text: string) => {
@@ -138,10 +141,12 @@ const ReportForm: React.FC<ReportFormProps> = ({ currentUser, onReportSubmit }) 
         <button
           type="submit"
           className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+          disabled={submitting}
         >
-          Enviar Reporte
+          {submitting ? "Enviando..." : "Enviar Reporte"}
         </button>
       </div>
+      {error ? <p className="text-red-400 text-sm">{error}</p> : null}
     </form>
   );
 };

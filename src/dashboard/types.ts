@@ -9,6 +9,7 @@ export enum UserRole {
 export interface User {
   id: string;
   name: string;
+  email?: string;
   role: UserRole;
   tutorOfGroup?: {
     grade: string;
@@ -61,6 +62,7 @@ export interface Evidence {
 export interface Report {
     id: string;
     studentId: string;
+    studentName?: string;
     teacherId: string;
     date: string;
     type: ReportType;

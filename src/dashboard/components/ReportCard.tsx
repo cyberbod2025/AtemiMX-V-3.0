@@ -1,10 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Report, User, UserRole, ReportStatus, Comment, Evidence } from '../types';
-import { getStudentById, getTeacherById, addCommentToReport, addEvidenceToReport, resolveReport } from '../services/mockDataService';
-import { MOCK_USERS } from '../constants';
-import { UserCircleIcon, CalendarDaysIcon, ChatBubbleBottomCenterTextIcon, PencilSquareIcon, ChevronDownIcon, ChevronUpIcon, PaperClipIcon, CameraIcon, CheckCircleIcon, PrinterIcon } from './icons/SolidIcons';
-import AudioRecorder from './AudioRecorder';
-import PrintableView from './PrintableView';
+import React, { useState, useEffect, useRef } from "react";
+import { Report, User, UserRole, ReportStatus, Comment, Evidence } from "../types";
+import { appendComment, appendEvidence, updateStatus } from "../services/incidentMetaService";
+import {
+  UserCircleIcon,
+  CalendarDaysIcon,
+  ChatBubbleBottomCenterTextIcon,
+  PencilSquareIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PaperClipIcon,
+  CameraIcon,
+  CheckCircleIcon,
+  PrinterIcon,
+} from "./icons/SolidIcons";
+import AudioRecorder from "./AudioRecorder";
+import PrintableView from "./PrintableView";
 
 interface ReportCardProps {
   report: Report;
@@ -15,88 +25,94 @@ interface ReportCardProps {
   isGuidanceView?: boolean;
 }
 
-const ReportCard: React.FC<ReportCardProps> = ({ report, viewStudentProfile, onReportUpdate, currentUser, isStudentProfileView }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [teacherName, setTeacherName] = useState('Cargando...');
-    const [studentName, setStudentName] = useState('Cargando...');
-    const [newComment, setNewComment] = useState('');
-    const [isResolving, setIsResolving] = useState(false);
-    const [resolutionNotes, setResolutionNotes] = useState('');
-    const photoInputRef = useRef<HTMLInputElement>(null);
+const ReportCard: React.FC<ReportCardProps> = ({
+  report,
+  viewStudentProfile,
+  onReportUpdate,
+  currentUser,
+  isStudentProfileView,
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [isResolving, setIsResolving] = useState(false);
+  const [resolutionNotes, setResolutionNotes] = useState("");
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const draft = localStorage.getItem(`draft-comment-${report.id}`);
+    if (draft) setNewComment(draft);
+  }, [report.id]);
 
-    // Draft saving for comments
-    useEffect(() => {
-        const draft = localStorage.getItem(`draft-comment-${report.id}`);
-        if(draft) setNewComment(draft);
-    }, [report.id]);
+  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewComment(e.target.value);
+    localStorage.setItem(`draft-comment-${report.id}`, e.target.value);
+  };
 
-    const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setNewComment(e.target.value);
-        localStorage.setItem(`draft-comment-${report.id}`, e.target.value);
-    };
+  const handleToggleExpand = () => setIsExpanded(!isExpanded);
 
-    useEffect(() => {
-        const fetchNames = async () => {
-            const student = await getStudentById(report.studentId);
-            const teacher = await getTeacherById(report.teacherId);
-            setStudentName(student?.name || report.studentId || "Desconocido");
-            setTeacherName(teacher?.name || report.teacherId || "Desconocido");
-        };
-        fetchNames();
-    }, [report.studentId, report.teacherId]);
-    
-    const handleToggleExpand = () => setIsExpanded(!isExpanded);
-    
-    const handleAddComment = async () => {
-        if (newComment.trim() === '') return;
-        const comment: Omit<Comment, 'id'> = {
-            userId: currentUser.id,
-            userName: currentUser.name,
-            text: newComment,
-            date: new Date().toISOString(),
-        };
-        const updatedReport = await addCommentToReport(report.id, comment);
-        if (updatedReport) {
-            onReportUpdate(updatedReport);
-            setNewComment('');
-            localStorage.removeItem(`draft-comment-${report.id}`);
-        }
+  const handleAddComment = async () => {
+    if (newComment.trim() === "") return;
+    const comment: Comment = {
+      id: `c-${Date.now()}`,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      text: newComment,
+      date: new Date().toISOString(),
     };
-    
-    const handleAddEvidence = async (file: File | Blob, type: 'photo' | 'audio') => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async () => {
-            const evidence: Omit<Evidence, 'id'> = {
-                type,
-                url: reader.result as string,
-                fileName: type === 'photo' ? (file as File).name : `grabacion-${new Date().toISOString()}.webm`,
-                date: new Date().toISOString(),
-            };
-            const updatedReport = await addEvidenceToReport(report.id, evidence);
-            if(updatedReport) onReportUpdate(updatedReport);
-        };
-    };
-    
-    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if(e.target.files && e.target.files[0]) {
-            handleAddEvidence(e.target.files[0], 'photo');
-        }
-    };
+    await appendComment(report.id, comment);
+    onReportUpdate({
+      ...report,
+      comments: [...report.comments, comment],
+      status: ReportStatus.InProgress,
+    });
+    setNewComment("");
+    localStorage.removeItem(`draft-comment-${report.id}`);
+  };
 
-    const handleAudioUpload = (audioBlob: Blob) => {
-        handleAddEvidence(audioBlob, 'audio');
+  const handleAddEvidence = async (file: File | Blob, type: "photo" | "audio") => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const evidence: Evidence = {
+        id: `ev-${Date.now()}`,
+        type,
+        url: reader.result as string,
+        fileName: type === "photo" ? (file as File).name : `grabacion-${new Date().toISOString()}.webm`,
+        date: new Date().toISOString(),
+      };
+      await appendEvidence(report.id, evidence);
+      onReportUpdate({
+        ...report,
+        evidence: [...report.evidence, evidence],
+      });
     };
-    
-    const handleResolve = async () => {
-        if(resolutionNotes.trim() === '') return;
-        const updatedReport = await resolveReport(report.id, currentUser.id, resolutionNotes);
-        if(updatedReport) {
-            onReportUpdate(updatedReport);
-            setIsResolving(false);
-            setResolutionNotes('');
-        }
-    };
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      void handleAddEvidence(e.target.files[0], "photo");
+    }
+  };
+
+  const handleAudioUpload = (audioBlob: Blob) => {
+    void handleAddEvidence(audioBlob, "audio");
+  };
+
+  const handleResolve = async () => {
+    if (resolutionNotes.trim() === "") return;
+    await updateStatus(report.id, ReportStatus.Resolved, resolutionNotes);
+    onReportUpdate({
+      ...report,
+      status: ReportStatus.Resolved,
+      resolutionNotes,
+      resolvedById: currentUser.id,
+      resolvedDate: new Date().toISOString(),
+    });
+    setIsResolving(false);
+    setResolutionNotes("");
+  };
+
+  const studentName = report.studentName ?? report.studentId;
+  const teacherName = report.teacherId;
 
     const handlePrint = () => {
         const printWindow = window.open('', '_blank');
@@ -110,7 +126,7 @@ const ReportCard: React.FC<ReportCardProps> = ({ report, viewStudentProfile, onR
         }
     };
 
-    const resolvedBy = MOCK_USERS.find(u => u.id === report.resolvedById)?.name || 'Desconocido';
+  const resolvedBy = report.resolvedById ?? "Desconocido";
 
     const canModify = [UserRole.Guidance, UserRole.Admin].includes(currentUser.role);
     
