@@ -2222,3 +2222,25 @@ body {
   margin: 0;
   color: rgba(255, 255, 255, 0.6);
 }
+
+.guardian-fab {
+  position: fixed;
+  right: 2rem;
+  bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: linear-gradient(120deg, rgba(255, 199, 44, 0.15), rgba(206, 70, 118, 0.3));
+  color: var(--color-text);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  z-index: 40;
+}
+
+.guardian-fab svg {
+  color: var(--accent-2);
+}

@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { logoutUser } from "../services/authService";
 import { ErrorBoundary } from "./ErrorBoundary";
 import "./styles/theme.css";
+import { saveGuardianReport } from "../services/guardianReportsService";
 
 const AdminPanel = React.lazy(() => import("../modules/sase310/auth/components/AdminPanel"));
 const Sase310Module = React.lazy(() => import("../modules/sase310/Sase310Module"));
@@ -13,6 +14,8 @@ const GlobalMenuModal = React.lazy(() => import("./GlobalMenuModal"));
 const PinPreferencesModal = React.lazy(() => import("./PinPreferencesModal"));
 const SecurityPinScreen = React.lazy(() => import("./SecurityPinScreen"));
 const IdeaIntro = React.lazy(() => import("./IdeaIntro"));
+const AngelGuardianModal = React.lazy(() => import("../AngelGuardianModal"));
+const AngelGuardianFab = React.lazy(() => import("./AngelGuardianFab"));
 
 type ActiveView = "none" | "menu" | "sase310" | "admin";
 
@@ -43,6 +46,7 @@ export const AppShell: React.FC = () => {
   const [pinEnabled, setPinEnabled] = useState(false);
   const [storedPin, setStoredPin] = useState<string | null>(null);
   const [requiresPinUnlock, setRequiresPinUnlock] = useState(false);
+  const [showGuardianModal, setShowGuardianModal] = useState(false);
 
   const isAuthPending = loading || claimsLoading;
   const PIN_ENABLED_KEY = "atemi:pinEnabled";
@@ -339,6 +343,11 @@ export const AppShell: React.FC = () => {
   return (
     <div className={`app-shell${isDashboardActive ? " app-shell--dashboard" : ""}`}>
       {isDashboardActive ? renderDashboardShell() : renderLegacyShell()}
+      {user ? (
+        <Suspense fallback={null}>
+          <AngelGuardianFab onOpen={() => setShowGuardianModal(true)} />
+        </Suspense>
+      ) : null}
       <Suspense fallback={null}>
         <SecurityPinScreen
           open={showSecurityPin}
@@ -378,6 +387,15 @@ export const AppShell: React.FC = () => {
           onClose={() => setPinPreferencesOpen(false)}
         />
       </Suspense>
+      {showGuardianModal ? (
+        <Suspense fallback={null}>
+          <AngelGuardianModal
+            onClose={() => setShowGuardianModal(false)}
+            onSaveReport={saveGuardianReport}
+            onSaved={() => setShowGuardianModal(false)}
+          />
+        </Suspense>
+      ) : null}
       {showIdeaIntro ? (
         <Suspense fallback={null}>
           <IdeaIntro onStart={() => setShowIdeaIntro(false)} />
