@@ -19,6 +19,7 @@ export default defineConfig({
   build: {
     outDir: "web-dist",
     emptyOutDir: false,
+    chunkSizeWarningLimit: 1100,
     rollupOptions: {
       output: {
         manualChunks(id) {
