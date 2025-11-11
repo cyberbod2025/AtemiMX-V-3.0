@@ -48,10 +48,16 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ currentUser
     return { typeData, statusData };
   }, [myReports]);
 
-  return (
-    <div className="space-y-8">
-      <GradebookPanel teacherId={currentUser.id} />
-      <PlannerPanel teacher={currentUser} />
+return (
+    <div className="space-y-6">
+      <div className="dashboard-grid">
+        <div className="dashboard-grid__item">
+          <GradebookPanel teacherId={currentUser.id} />
+        </div>
+        <div className="dashboard-grid__item">
+          <PlannerPanel teacher={currentUser} />
+        </div>
+      </div>
 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Mi Panel</h2>
