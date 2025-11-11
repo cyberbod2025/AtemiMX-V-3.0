@@ -1,17 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../hooks/useAuth";
-import AdminPanel from "../modules/sase310/auth/components/AdminPanel";
-import Sase310Module from "../modules/sase310/Sase310Module";
 import { logoutUser } from "../services/authService";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { GlobalMenuModal } from "./GlobalMenuModal";
-import { IdeaIntro } from "./IdeaIntro";
-import { PinPreferencesModal } from "./PinPreferencesModal";
-import { Sidebar } from "./Sidebar";
-import { SecurityPinScreen } from "./SecurityPinScreen";
 import "./styles/theme.css";
-import { AtemiDashboard } from "./AtemiDashboard";
+
+const AdminPanel = React.lazy(() => import("../modules/sase310/auth/components/AdminPanel"));
+const Sase310Module = React.lazy(() => import("../modules/sase310/Sase310Module"));
+const Sidebar = React.lazy(() => import("./Sidebar"));
+const AtemiDashboard = React.lazy(() => import("./AtemiDashboard"));
+const GlobalMenuModal = React.lazy(() => import("./GlobalMenuModal"));
+const PinPreferencesModal = React.lazy(() => import("./PinPreferencesModal"));
+const SecurityPinScreen = React.lazy(() => import("./SecurityPinScreen"));
+const IdeaIntro = React.lazy(() => import("./IdeaIntro"));
 
 type ActiveView = "none" | "menu" | "sase310" | "admin";
 
@@ -256,6 +257,12 @@ export const AppShell: React.FC = () => {
     </section>
   );
 
+  const renderLoader = (message: string) => (
+    <div className="app-shell__loader" role="status" aria-live="polite">
+      {message}
+    </div>
+  );
+
   const renderContent = () => {
     if (activeView === "none") {
       return renderEmptyState("Elige un módulo para comenzar");
@@ -271,10 +278,18 @@ export const AppShell: React.FC = () => {
           </section>
         );
       }
-      return <AdminPanel />;
+      return (
+        <Suspense fallback={renderLoader("Abriendo panel administrativo...")}>
+          <AdminPanel />
+        </Suspense>
+      );
     }
     if (activeView === "sase310") {
-      return <Sase310Module onNavigateHome={handleSelectMenu} />;
+      return (
+        <Suspense fallback={renderLoader("Cargando módulo SASE-310...")}>
+          <Sase310Module onNavigateHome={handleSelectMenu} />
+        </Suspense>
+      );
     }
     return renderEmptyState("Panel principal disponible desde el menú general");
   };
@@ -284,22 +299,24 @@ export const AppShell: React.FC = () => {
   const renderLegacyShell = () => (
     <div className="app-shell__layer">
       <div className="app-shell__layout">
-        <Sidebar
-          activeView={activeView}
-          hasSession={Boolean(user)}
-          logoutPending={logoutPending}
-          onSelectHome={handleSelectMenu}
-          onResetView={handleResetView}
-          onSelectSase={handleSelectSase}
-          onSelectAdmin={handleSelectAdmin}
-          onOpenHelp={handleOpenHelp}
-          onOpenSettings={handleOpenSettings}
-          onLogout={handleLogout}
-          canAccessAdmin={Boolean(user && isAdmin)}
-          onOpenLauncher={handleShowGlobalMenu}
-          onToggleCollapse={handleToggleSidebar}
-          isCollapsed={isSidebarCollapsed}
-        />
+        <Suspense fallback={renderLoader("Cargando navegación principal...")}>
+          <Sidebar
+            activeView={activeView}
+            hasSession={Boolean(user)}
+            logoutPending={logoutPending}
+            onSelectHome={handleSelectMenu}
+            onResetView={handleResetView}
+            onSelectSase={handleSelectSase}
+            onSelectAdmin={handleSelectAdmin}
+            onOpenHelp={handleOpenHelp}
+            onOpenSettings={handleOpenSettings}
+            onLogout={handleLogout}
+            canAccessAdmin={Boolean(user && isAdmin)}
+            onOpenLauncher={handleShowGlobalMenu}
+            onToggleCollapse={handleToggleSidebar}
+            isCollapsed={isSidebarCollapsed}
+          />
+        </Suspense>
         <main className="app-shell__main">
           {statusMessage ? <div className="app-shell__notice">{statusMessage}</div> : null}
           <ErrorBoundary>
@@ -313,47 +330,59 @@ export const AppShell: React.FC = () => {
   const renderDashboardShell = () => (
     <div className="dashboard-wrapper">
       {statusMessage ? <div className="app-shell__notice dashboard-wrapper__notice">{statusMessage}</div> : null}
-      <AtemiDashboard user={user} role={role ?? null} onLogout={handleLogout} />
+      <Suspense fallback={renderLoader("Cargando panel AtemiMX...")}>
+        <AtemiDashboard user={user} role={role ?? null} onLogout={handleLogout} />
+      </Suspense>
     </div>
   );
 
   return (
     <div className={`app-shell${isDashboardActive ? " app-shell--dashboard" : ""}`}>
       {isDashboardActive ? renderDashboardShell() : renderLegacyShell()}
-      <SecurityPinScreen
-        open={showSecurityPin}
-        mode={pinScreenMode}
-        errorMessage={pinError}
-        onCancel={() => {
-          setShowSecurityPin(false);
-          if (requiresPinUnlock) {
-            setShowSecurityPin(true);
-          }
-        }}
-        onSubmit={handlePinSubmit}
-      />
-      <GlobalMenuModal
-        open={showGlobalMenu}
-        onClose={() => setShowGlobalMenu(false)}
-        onOpenSase={() => {
-          setShowGlobalMenu(false);
-          handleSelectSase();
-        }}
-        onShowSecurity={() => {
-          setShowGlobalMenu(false);
-          handleOpenPinPreferences();
-        }}
-        variant="floating"
-        user={user}
-      />
-      <PinPreferencesModal
-        open={pinPreferencesOpen}
-        pinEnabled={pinEnabled}
-        onRequestSetup={handleRequestPinSetup}
-        onDisable={handleDisablePin}
-        onClose={() => setPinPreferencesOpen(false)}
-      />
-      {showIdeaIntro ? <IdeaIntro onStart={() => setShowIdeaIntro(false)} /> : null}
+      <Suspense fallback={null}>
+        <SecurityPinScreen
+          open={showSecurityPin}
+          mode={pinScreenMode}
+          errorMessage={pinError}
+          onCancel={() => {
+            setShowSecurityPin(false);
+            if (requiresPinUnlock) {
+              setShowSecurityPin(true);
+            }
+          }}
+          onSubmit={handlePinSubmit}
+        />
+      </Suspense>
+      <Suspense fallback={null}>
+        <GlobalMenuModal
+          open={showGlobalMenu}
+          onClose={() => setShowGlobalMenu(false)}
+          onOpenSase={() => {
+            setShowGlobalMenu(false);
+            handleSelectSase();
+          }}
+          onShowSecurity={() => {
+            setShowGlobalMenu(false);
+            handleOpenPinPreferences();
+          }}
+          variant="floating"
+          user={user}
+        />
+      </Suspense>
+      <Suspense fallback={null}>
+        <PinPreferencesModal
+          open={pinPreferencesOpen}
+          pinEnabled={pinEnabled}
+          onRequestSetup={handleRequestPinSetup}
+          onDisable={handleDisablePin}
+          onClose={() => setPinPreferencesOpen(false)}
+        />
+      </Suspense>
+      {showIdeaIntro ? (
+        <Suspense fallback={null}>
+          <IdeaIntro onStart={() => setShowIdeaIntro(false)} />
+        </Suspense>
+      ) : null}
     </div>
   );
 };
