@@ -1,0 +1,1 @@
+import{j as a,S as r}from"./react-vendor-BfikQoQB.js";import"./vendor-CUhUAKZ9.js";const s=({onOpen:n})=>a.jsxs("button",{type:"button",className:"guardian-fab",onClick:n,"aria-label":"Abrir Ángel Guardián",children:[a.jsx(r,{size:24}),a.jsx("span",{children:"Ángel Guardián"})]});export{s as AngelGuardianFab,s as default};
