@@ -1,9 +1,9 @@
-import { GoogleGenAI, GenerateContentResponse, LiveServerMessage, Modality } from "@google/genai";
-import { decode, decodeAudioData, createPcmBlob, blobToBase64 } from './audioUtils';
+import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
+import { decode, decodeAudioData, createPcmBlob } from "./audioUtils";
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 if (!API_KEY) {
-    throw new Error("API_KEY environment variable not set");
+  throw new Error("Configura VITE_GEMINI_API_KEY en tu archivo .env para usar Gemini.");
 }
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
