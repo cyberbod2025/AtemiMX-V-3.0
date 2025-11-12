@@ -1,0 +1,205 @@
+{
+  "fases": [
+    {
+      "faseId": "fase-1",
+      "nombre": "Fase 1 · Preescolar",
+      "descripcion": "Construye relaciones iniciales con los lenguajes, los cuerpos y el entorno social.",
+      "orden": 1,
+      "camposFormativos": ["campo-lenguajes", "campo-saberes"]
+    },
+    {
+      "faseId": "fase-2",
+      "nombre": "Fase 2 · Primeros grados de primaria",
+      "descripcion": "Refuerza la exploración de los lenguajes y los saberes desde la vida cotidiana.",
+      "orden": 2,
+      "camposFormativos": ["campo-etica", "campo-humano"]
+    },
+    {
+      "faseId": "fase-3",
+      "nombre": "Fase 3 · Segunda etapa de primaria",
+      "descripcion": "Profundiza en el pensamiento científico y social para la solución de problemas.",
+      "orden": 3,
+      "camposFormativos": ["campo-ciencia-social", "campo-humano"]
+    },
+    {
+      "faseId": "fase-4",
+      "nombre": "Fase 4 · Tercera etapa de primaria",
+      "descripcion": "Integra conocimientos y habilidades en contextos más amplios y colaborativos.",
+      "orden": 4,
+      "camposFormativos": ["campo-lenguajes", "campo-saberes"]
+    },
+    {
+      "faseId": "fase-5",
+      "nombre": "Fase 5 · Transición a secundaria",
+      "descripcion": "Potencia la autonomía del estudiantado y la toma de decisiones informadas.",
+      "orden": 5,
+      "camposFormativos": ["campo-etica", "campo-ciencia-social"]
+    },
+    {
+      "faseId": "fase-6",
+      "nombre": "Fase 6 · Secundaria",
+      "descripcion": "Asegura la aplicación disciplinar y socioemocional integrada.",
+      "orden": 6,
+      "camposFormativos": ["campo-lenguajes", "campo-saberes", "campo-etica", "campo-humano", "campo-ciencia-social"]
+    }
+  ],
+  "camposFormativos": [
+    {
+      "campoId": "campo-lenguajes",
+      "nombre": "Lenguajes",
+      "descripcion": "Comunicación, expresión, lectura y escritura contextualizadas.",
+      "faseId": "fase-6",
+      "pdaIds": ["pda-argumentacion", "pda-comunicacion"]
+    },
+    {
+      "campoId": "campo-saberes",
+      "nombre": "Saberes y pensamiento científico",
+      "descripcion": "Construcción de explicaciones, resolución de problemas y modelación científica.",
+      "faseId": "fase-6",
+      "pdaIds": ["pda-modelacion", "pda-razonamiento"]
+    },
+    {
+      "campoId": "campo-etica",
+      "nombre": "Ética, naturaleza y sociedades",
+      "descripcion": "Convivencia democrática, cuidado ambiental y participación ciudadana.",
+      "faseId": "fase-5",
+      "pdaIds": ["pda-cuidado", "pda-dialogo"]
+    },
+    {
+      "campoId": "campo-humano",
+      "nombre": "De lo humano y lo comunitario",
+      "descripcion": "Identidad, patrimonio cultural y prácticas artísticas comunitarias.",
+      "faseId": "fase-4",
+      "pdaIds": ["pda-identidad", "pda-proyecto"]
+    },
+    {
+      "campoId": "campo-ciencia-social",
+      "nombre": "Ética, naturaleza y sociedades",
+      "descripcion": "Comprensión histórica y social desde la perspectiva de derechos y responsabilidades.",
+      "faseId": "fase-3",
+      "pdaIds": ["pda-ciudadania", "pda-historia"]
+    }
+  ],
+  "pdas": [
+    {
+      "pdaId": "pda-argumentacion",
+      "campoId": "campo-lenguajes",
+      "nombre": "Argumentación textual",
+      "descripcion": "Construye y analiza argumentos a partir de diversas fuentes informativas.",
+      "descriptor": "Organiza ideas con coherencia y ofrece evidencia pertinente del contenido trabajado.",
+      "competencias": ["Comunicación", "Pensamiento crítico"],
+      "evidencias": ["Ensayo guiado", "Video de participación"],
+      "indicadores": ["Identifica ideas centrales", "Presenta conclusiones sustentadas"],
+      "recursos": ["Guía de escritura argumentativa", "Listado de preguntas detonadoras"],
+      "orden": 1
+    },
+    {
+      "pdaId": "pda-comunicacion",
+      "campoId": "campo-lenguajes",
+      "nombre": "Comunicación oral y comparada",
+      "descripcion": "Expresa consensos e ideas en diferentes lenguajes y entornos.",
+      "descriptor": "Utiliza voz, gesto y multimedia para comunicar ideas con intención pedagógica.",
+      "competencias": ["Comunicación", "Responsabilidad"],
+      "evidencias": ["Podcast corto", "Registro audiovisual de debate"],
+      "indicadores": ["Mantiene postura coherente", "Recibe y responde retroalimentación"],
+      "recursos": ["Plantilla de diálogo", "Banco de preguntas de reflexión"],
+      "orden": 2
+    },
+    {
+      "pdaId": "pda-modelacion",
+      "campoId": "campo-saberes",
+      "nombre": "Modelación y diseño de soluciones",
+      "descripcion": "Formula preguntas y modelos para resolver problemas cotidianos.",
+      "descriptor": "Define variables, usa datos locales y prueba hipótesis con evidencia.",
+      "competencias": ["Pensamiento matemático", "Aprendizaje autónomo"],
+      "evidencias": ["Mapa conceptual", "Registro fotográfico de prototipo"],
+      "indicadores": ["Relaciona datos cuantitativos y cualitativos", "Evalúa soluciones propuestas"],
+      "recursos": ["Formato de prototipo", "Cuestionario de validación"],
+      "orden": 1
+    },
+    {
+      "pdaId": "pda-razonamiento",
+      "campoId": "campo-saberes",
+      "nombre": "Razonamiento científico",
+      "descripcion": "Evalúa experimentos y evidencia para explicar fenómenos naturales.",
+      "descriptor": "Explica causas y consecuencias con lenguaje estadístico básico y diagramas.",
+      "competencias": ["Pensamiento crítico", "Metodología científica"],
+      "evidencias": ["Informe experimental", "Registro de observaciones"],
+      "indicadores": ["Identifica variables", "Propone soluciones informadas"],
+      "recursos": ["Checklist de laboratorio seguro", "Banco de tablas"],
+      "orden": 2
+    },
+    {
+      "pdaId": "pda-cuidado",
+      "campoId": "campo-etica",
+      "nombre": "Cuidado y convivencia democrática",
+      "descripcion": "Reconoce derechos y responsabilidades con base en la empatía.",
+      "descriptor": "Promueve acuerdos con respeto, escucha activa y negociación de conflictos.",
+      "competencias": ["Ciudadanía", "Resolución de conflictos"],
+      "evidencias": ["Bitácora de acuerdos", "Registro audiovisual de círculo"],
+      "indicadores": ["Identifica necesidades colectivas", "Proporciona alternativas respetuosas"],
+      "recursos": ["Guía de mediación", "Cuestionario de reflexión"],
+      "orden": 1
+    },
+    {
+      "pdaId": "pda-dialogo",
+      "campoId": "campo-etica",
+      "nombre": "Diálogo contextualizado",
+      "descripcion": "Dialoga con referentes culturales y comunitarios para actuar con responsabilidad.",
+      "descriptor": "Integra voces diversas y contextualiza decisiones éticas.",
+      "competencias": ["Participación social", "Comunicación"],
+      "evidencias": ["Mesa de diálogo", "Ensayo de postura ética"],
+      "indicadores": ["Reconoce múltiples perspectivas", "Propone acciones comunitarias"],
+      "recursos": ["Ficha de escucha activa", "Mapa de actores comunitarios"],
+      "orden": 2
+    },
+    {
+      "pdaId": "pda-identidad",
+      "campoId": "campo-humano",
+      "nombre": "Identidad personal y comunitaria",
+      "descripcion": "Construye narrativas que recuperan el patrimonio local.",
+      "descriptor": "Ejemplifica tradiciones propias y de la zona con respeto y creatividad.",
+      "competencias": ["Identidad cultural", "Expresión artística"],
+      "evidencias": ["Portafolio fotográfico", "Presentación multimedia"],
+      "indicadores": ["Describe tradiciones", "Relaciona el pasado y el presente"],
+      "recursos": ["Bitácora de campo", "Banco de preguntas de investigación"],
+      "orden": 1
+    },
+    {
+      "pdaId": "pda-proyecto",
+      "campoId": "campo-humano",
+      "nombre": "Proyectos de transformación comunitaria",
+      "descripcion": "Diseña acciones con impacto en su entorno escolar.",
+      "descriptor": "Planifica fases, roles y evidencia para documentar el proyecto.",
+      "competencias": ["Trabajo colaborativo", "Planeación"],
+      "evidencias": ["Guía de proyecto", "Bitácora grupal"],
+      "indicadores": ["Distribuye tareas", "Evalúa avances con indicadores"],
+      "recursos": ["Canvas de proyecto", "Formato de retroalimentación"],
+      "orden": 2
+    },
+    {
+      "pdaId": "pda-ciudadania",
+      "campoId": "campo-ciencia-social",
+      "nombre": "Ciudadanía crítica",
+      "descripcion": "Analiza contextos sociales y propone acciones participativas.",
+      "descriptor": "Elabora diagnósticos con datos y dialoga con la comunidad escolar.",
+      "competencias": ["Participación ciudadana", "Pensamiento crítico"],
+      "evidencias": ["Diagnóstico comunitario", "Plan de acción"],
+      "indicadores": ["Identifica problemáticas", "Propone pasos concretos"],
+      "recursos": ["Cuaderno de campo", "Guía de entrevistas"],
+      "orden": 1
+    },
+    {
+      "pdaId": "pda-historia",
+      "campoId": "campo-ciencia-social",
+      "nombre": "Historia y memoria colectiva",
+      "descripcion": "Reconoce procesos históricos con enfoque en derechos.",
+      "descriptor": "Relaciona acontecimientos y utiliza fuentes diversas para argumentar.",
+      "competencias": ["Pensamiento histórico", "Comunicación"],
+      "evidencias": ["Narración histórica", "Mapa cronológico"],
+      "indicadores": ["Reconoce causas", "Superpone puntos de vista"],
+      "recursos": ["Banco de fuentes", "Plantilla cronológica"],
+      "orden": 2
+    }
+  ]
+}
