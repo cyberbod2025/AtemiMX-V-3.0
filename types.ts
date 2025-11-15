@@ -74,6 +74,12 @@ export interface NemCatalog {
   pdas: NemPda[];
  }
 
+export interface GuardianReportAuthor {
+  uid: string;
+  email?: string | null;
+  role?: string | null;
+}
+
 export interface GuardianReport {
   id: string;
   title: string;
@@ -83,4 +89,7 @@ export interface GuardianReport {
   date: string;
   /** Fecha ya formateada para mostrar en UI (opcional) */
   displayDate?: string;
+  createdBy?: GuardianReportAuthor;
+  roleVisibility?: string[];
+  voiceDurationSec?: number | null;
 }

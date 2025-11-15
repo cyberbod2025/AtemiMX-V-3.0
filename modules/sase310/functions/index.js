@@ -52,6 +52,16 @@ const ROLE_ALIASES = {
 const VALID_ROLES = new Set(["admin", "teacher", "prefect", "guidance", "medical", "socialWork", "clerk", "pending"]);
 const DEFAULT_ROLE = "pending";
 
+const GUARDIAN_ALLOWED_ROLES = new Set(["teacher", "prefect", "guidance", "medical", "socialWork", "admin"]);
+const DEFAULT_GUARDIAN_VISIBILITY = {
+  teacher: ["teacher", "guidance", "admin"],
+  guidance: ["guidance", "admin"],
+  prefect: ["prefect", "guidance", "admin"],
+  medical: ["medical", "guidance", "admin"],
+  socialWork: ["socialWork", "guidance", "admin"],
+  admin: ["admin"],
+};
+
 const REPORT_SCHEMA_VERSION = "1.1.0";
 const REPORT_SCHEMA_PATH = "schemas/reportes.json";
 
@@ -90,6 +100,62 @@ const buildClaimsFromProfile = (profile) => {
   const autorizado = coerceBoolean(profile?.autorizado);
   return { role, autorizado };
 };
+
+const ensureIsoString = (value, fallback = null) => {
+  const fallbackDate = fallback instanceof Date ? fallback : new Date();
+  if (typeof value !== "string") {
+    return fallbackDate.toISOString();
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return fallbackDate.toISOString();
+  }
+  return parsed.toISOString();
+};
+
+const ensureGuardianString = (value, fallback, { min = 3, max = 160 } = {}) => {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length < min) {
+    return fallback;
+  }
+  if (trimmed.length > max) {
+    return trimmed.slice(0, max);
+  }
+  return trimmed;
+};
+
+const normalizeGuardianDraft = (payload = {}) => {
+  const nowIso = new Date().toISOString();
+  return {
+    title: ensureGuardianString(payload.title, "Registro Ángel Guardián", { min: 3, max: 140 }),
+    summary: ensureGuardianString(payload.summary, "Sin resumen registrado.", { min: 3, max: 500 }),
+    transcript: ensureGuardianString(payload.transcript, "", { min: 0, max: 8000 }),
+    date: ensureIsoString(payload.date ?? payload.recordedAtISO ?? nowIso, nowIso),
+  };
+};
+
+const sanitizeGuardianVisibility = (requestedVisibility, reporterRole) => {
+  const requested = Array.isArray(requestedVisibility) ? requestedVisibility : DEFAULT_GUARDIAN_VISIBILITY[reporterRole] ?? [];
+  const roles = new Set(
+    requested
+      .map((role) => normalizeRole(role))
+      .filter((role) => GUARDIAN_ALLOWED_ROLES.has(role)),
+  );
+  if (GUARDIAN_ALLOWED_ROLES.has(reporterRole)) {
+    roles.add(reporterRole);
+  }
+  roles.add("admin");
+  return Array.from(roles);
+};
+
+const buildGuardianCreatedBy = (context, role) => ({
+  uid: context.auth.uid,
+  email: typeof context.auth.token?.email === "string" ? context.auth.token.email : null,
+  role,
+});
 
 const sanitizeAuditString = (value, fallback = null) => {
   if (typeof value !== "string") {
@@ -139,6 +205,17 @@ const coerceDuration = (value) => {
   }
   const capped = Math.min(Math.round(value), 12 * 60 * 60);
   return capped;
+};
+
+const extractGuardianSecret = async (payload) => {
+  if (payload && typeof payload === "object" && payload.ciphertext && payload.iv) {
+    const validated = validateEncryptedGuardianPayload(payload);
+    return decryptPayload(validated);
+  }
+  if (payload && typeof payload === "object") {
+    return payload;
+  }
+  throw new functions.https.HttpsError("invalid-argument", "El contenido del reporte es obligatorio.");
 };
 
 async function fetchUserProfileWithRetry(uid) {
@@ -332,28 +409,52 @@ exports.saveEncryptedReport = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "Inicia sesion para guardar reportes cifrados.");
   }
 
-  const payload = validateEncryptedGuardianPayload(data?.payload);
+  const reporterRole = normalizeRole(context.auth.token?.role);
+  if (!GUARDIAN_ALLOWED_ROLES.has(reporterRole)) {
+    throw new functions.https.HttpsError("permission-denied", "Tu rol no puede registrar reportes de Ángel Guardián.");
+  }
+
   const now = admin.firestore.Timestamp.now();
-  const recordedAt = toTimestampFromIso(data?.recordedAtISO, now) ?? now;
+  const secretPayload = await extractGuardianSecret(data?.payload);
+  const normalizedSecret = normalizeGuardianDraft(secretPayload);
+  const encryptedPayload = await encryptPayload(normalizedSecret);
+  const recordedAt = toTimestampFromIso(data?.recordedAtISO ?? normalizedSecret.date, now) ?? now;
   const voiceDurationSec = coerceDuration(data?.voiceDurationSec);
+  const roleVisibility = sanitizeGuardianVisibility(data?.roleVisibility, reporterRole);
+  const createdBy = buildGuardianCreatedBy(context, reporterRole);
 
   const document = {
     uid: context.auth.uid,
-    payload,
-    encryptionVersion: payload.version,
+    payload: encryptedPayload,
+    encryptionVersion: encryptedPayload.version,
     recordedAt,
     createdAt: now,
     updatedAt: now,
+    roleVisibility,
+    createdBy,
     ...(voiceDurationSec ? { voiceDurationSec } : null),
   };
 
   const docRef = await db.collection(GUARDIAN_REPORTS_COLLECTION).add(document);
+
+  await db.collection(BITACORA_SDLC_COLLECTION).add({
+    uid: context.auth.uid,
+    email: createdBy.email,
+    role: reporterRole,
+    resource: docRef.path,
+    tipo: "guardian_report",
+    accion: "CREAR",
+    timestamp: now,
+    visibility: roleVisibility,
+  });
+
   logger.info("Reporte de Angel Guardian almacenado", { uid: context.auth.uid, reportId: docRef.id });
 
   return {
     reportId: docRef.id,
     recordedAtISO: recordedAt.toDate().toISOString(),
     storedAtISO: now.toDate().toISOString(),
+    roleVisibility,
   };
 });
 
@@ -362,28 +463,64 @@ exports.getEncryptedReports = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "Inicia sesion para consultar tus reportes cifrados.");
   }
 
-  const snapshot = await db
-    .collection(GUARDIAN_REPORTS_COLLECTION)
-    .where("uid", "==", context.auth.uid)
-    .orderBy("recordedAt", "desc")
-    .limit(100)
-    .get();
+  const role = normalizeRole(context.auth.token?.role);
+  if (!GUARDIAN_ALLOWED_ROLES.has(role) && role !== "admin") {
+    throw new functions.https.HttpsError("permission-denied", "Tu rol no puede consultar reportes de Ángel Guardián.");
+  }
 
-  const reports = snapshot.docs
-    .map((docSnapshot) => {
-      const docData = docSnapshot.data();
-      if (!docData?.payload) {
-        return null;
-      }
-      return {
-        id: docSnapshot.id,
-        payload: docData.payload,
-        recordedAtISO: docData.recordedAt?.toDate().toISOString() ?? null,
-        updatedAtISO: docData.updatedAt?.toDate().toISOString() ?? null,
-        voiceDurationSec: typeof docData.voiceDurationSec === "number" ? docData.voiceDurationSec : null,
-      };
-    })
-    .filter(Boolean);
+  const collectionRef = db.collection(GUARDIAN_REPORTS_COLLECTION);
+  let queryRef;
+  let scope = "role";
+  if (role === "admin") {
+    queryRef = collectionRef;
+    scope = "admin";
+  } else if (role === "teacher") {
+    queryRef = collectionRef.where("uid", "==", context.auth.uid);
+    scope = "own";
+  } else {
+    queryRef = collectionRef.where("roleVisibility", "array-contains", role);
+  }
+
+  const snapshot = await queryRef.orderBy("recordedAt", "desc").limit(150).get();
+
+  const reports = (
+    await Promise.all(
+      snapshot.docs.map(async (docSnapshot) => {
+        const docData = docSnapshot.data();
+        if (!docData?.payload) {
+          return null;
+        }
+        try {
+          const secret = await decryptPayload(docData.payload);
+          return {
+            id: docSnapshot.id,
+            payload: secret,
+            recordedAtISO: docData.recordedAt?.toDate().toISOString() ?? null,
+            updatedAtISO: docData.updatedAt?.toDate().toISOString() ?? null,
+            roleVisibility: Array.isArray(docData.roleVisibility) ? docData.roleVisibility : [],
+            createdBy: docData.createdBy ?? null,
+            voiceDurationSec: typeof docData.voiceDurationSec === "number" ? docData.voiceDurationSec : null,
+          };
+        } catch (error) {
+          logger.error("No se pudo descifrar un reporte de guardian", {
+            reportId: docSnapshot.id,
+            error: error instanceof Error ? error.message : error,
+          });
+          return null;
+        }
+      }),
+    )
+  ).filter(Boolean);
+
+  await db.collection(BITACORA_SDLC_COLLECTION).add({
+    uid: context.auth.uid,
+    email: typeof context.auth.token?.email === "string" ? context.auth.token.email : null,
+    role,
+    resource: `guardianReports:${scope}`,
+    tipo: "guardian_report",
+    accion: "CONSULTAR",
+    timestamp: admin.firestore.Timestamp.now(),
+  });
 
   return { reports };
 });

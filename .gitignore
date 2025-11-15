@@ -1,24 +1,42 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# =======================================
+# 🔒 ENTORNOS / SECRETS (NUNCA SUBIR)
+# =======================================
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+.env.test
+*.env
 
-node_modules
-dist
-dist-ssr
-*.local
+# =======================================
+# 🔧 COMPILACIÓN / OUTPUTS
+# =======================================
+dist/
+build/
+out/
+firebase-debug.log*
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# =======================================
+# 📦 DEPENDENCIAS
+# =======================================
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+
+# =======================================
+# 🧩 ARCHIVOS DEL SISTEMA
+# =======================================
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+# =======================================
+# ⚡ Vite / React
+# =======================================
+.vite
+*.cache
+vite.config.timestamp-*
+
+# Cobertura
+coverage/
+.nyc_output

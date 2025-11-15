@@ -60,6 +60,9 @@ const App: React.FC<DashboardAppProps> = ({ users, defaultUserId, defaultView = 
                 case UserRole.Prefect:
                     setCurrentView('prefecture-dashboard');
                     break;
+                case 'direccion':
+                    setCurrentView('admin-dashboard');
+                    break;
                 default:
                     setCurrentView('teacher-dashboard');
             }

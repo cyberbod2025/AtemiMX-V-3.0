@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
-import { User, Report, ReportType, ReportStatus, Student } from '../../types';
+import { User, Report, ReportType, ReportStatus, Student, GuardianReport } from '../../types';
 import { getAllReports } from '../../services/mockDataService';
 import { MOCK_STUDENTS, MOCK_USERS } from '../../constants';
 import { ChartPieIcon, ChartBarIcon, UsersIcon } from '../icons/SolidIcons';
+import { useGuardianReports } from "../../hooks/useGuardianReports";
+import { getDashboardModulesForRole } from "../../services/roleDashboards";
 
 interface AdminDashboardViewProps {
   currentUser: User;
@@ -15,6 +17,9 @@ const STATUS_COLORS = ['#3B82F6', '#F59E0B', '#10B981'];
 const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentUser }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [filteredReports, setFilteredReports] = useState<Report[]>([]);
+    const modules = useMemo(() => getDashboardModulesForRole(currentUser.role), [currentUser.role]);
+    const showGuardianModule = modules.some((module) => module.id === "guardian-inbox");
+    const { reports: guardianReports, loading: guardianLoading, error: guardianError } = useGuardianReports(showGuardianModule);
 
     const [gradeFilter, setGradeFilter] = useState('all');
     const [groupFilter, setGroupFilter] = useState('all');
@@ -85,6 +90,23 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentUser }) 
     const availableGrades = [...new Set(students.map(s => s.grade))];
     const availableGroups = [...new Set(students.map(s => s.group))];
 
+    const guardianMetrics = useMemo(() => {
+        const total = guardianReports.length;
+        const last24h = guardianReports.filter(r => Date.now() - Date.parse(r.date) <= 24 * 60 * 60 * 1000).length;
+        const avgDuration = total
+            ? Math.round(
+                guardianReports.reduce((acc, report) => acc + (report.voiceDurationSec ?? 0), 0) / total,
+              )
+            : 0;
+        const byRole = guardianReports.reduce((acc, report) => {
+            const role = report.createdBy?.role ?? "desconocido";
+            acc[role] = (acc[role] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+        const byRoleEntries = Object.entries(byRole).sort((a, b) => b[1] - a[1]);
+        return { total, last24h, avgDuration, byRoleEntries };
+    }, [guardianReports]);
+
   return (
     <div className="space-y-6">
        <h2 className="text-2xl font-bold flex items-center text-gray-800 dark:text-white">
@@ -107,6 +129,61 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentUser }) 
             {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </div>
+
+      {showGuardianModule ? (
+        <section className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-4">
+          <header className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 uppercase tracking-wide">Ángel Guardián</p>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Indicadores globales</h3>
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {guardianMetrics.total} reportes · {guardianMetrics.last24h} últimas 24h
+            </div>
+          </header>
+          {guardianLoading ? (
+            <p className="text-sm text-gray-500">Sincronizando registros...</p>
+          ) : guardianError ? (
+            <p className="text-sm text-red-500">{guardianError}</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                  <p className="text-xs text-gray-500 uppercase">Duración media</p>
+                  <p className="text-2xl font-semibold text-gray-800 dark:text-gray-100">
+                    {guardianMetrics.avgDuration} s
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                  <p className="text-xs text-gray-500 uppercase">Reportes por rol</p>
+                  <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-200">
+                    {guardianMetrics.byRoleEntries.map(([role, count]) => (
+                      <li key={`guardian-role-${role}`} className="flex justify-between">
+                        <span>{role}</span>
+                        <span className="font-semibold">{count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <p className="text-xs text-gray-500 uppercase mb-2">Últimos registros</p>
+                <ul className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                  {guardianReports.slice(0, 6).map((report) => (
+                    <li key={`guardian-dashboard-${report.id}`} className="text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+                      <p className="font-medium text-gray-800 dark:text-gray-100">{report.title}</p>
+                      <p className="text-xs text-gray-500">
+                        {report.createdBy?.role ?? "desconocido"} ·{" "}
+                        {report.displayDate ?? new Date(report.date).toLocaleString("es-MX")}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </section>
+      ) : null}
 
        {/* Stat Cards */}
        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

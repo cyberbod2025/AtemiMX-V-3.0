@@ -3,6 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createReport } from "../firestoreService";
 import { reportInputSchema, type ReportInput } from "../validation/reportSchema";
 
+const ENCRYPTION_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+const OWNER_META = {
+  name: "Docente Autorizado",
+  email: "docente@institucion.mx",
+  role: "teacher" as const,
+};
+
 const addDocMock = vi.fn();
 const collectionMock = vi.fn();
 
@@ -39,6 +46,7 @@ const basePayload: ReportInput = {
 
 describe("reportInputSchema", () => {
   beforeEach(() => {
+    vi.stubEnv("VITE_ENCRYPTION_MASTER_KEY", ENCRYPTION_KEY);
     addDocMock.mockReset();
     collectionMock.mockReset();
     addDocMock.mockResolvedValue({ id: "test-report" });
@@ -65,10 +73,13 @@ describe("reportInputSchema", () => {
 
   it("prevents Firestore writes when validation fails", async () => {
     await expect(
-      createReport({
-        ...basePayload,
-        description: "corta",
-      }),
+      createReport(
+        {
+          ...basePayload,
+          description: "corta",
+        },
+        OWNER_META,
+      ),
     ).rejects.toThrow(/Datos de reporte invalidos/i);
     expect(addDocMock).not.toHaveBeenCalled();
   });
@@ -76,7 +87,7 @@ describe("reportInputSchema", () => {
   it("surfaced Firestore write errors with a readable message", async () => {
     addDocMock.mockRejectedValueOnce(new Error("firestore down"));
 
-    await expect(createReport(basePayload)).rejects.toThrow(/No se pudo crear el reporte/i);
+    await expect(createReport(basePayload, OWNER_META)).rejects.toThrow(/No se pudo crear el reporte/i);
     expect(addDocMock).toHaveBeenCalledTimes(1);
   });
 });

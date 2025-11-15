@@ -1,0 +1,16 @@
+──────────────────────────────────────────────────────
+🧾 LOG DE CONFIGURACIÓN FIRESTORE – 2025-10-29_05-57-00
+──────────────────────────────────────────────────────
+Ruta base: C:\Users\HugoSYSTEM\Desktop\AtemiMX-V-3.0
+Usuario: HugoSYSTEM
+Versión AtemiMX: v3.6
+Hash de commit: 1160c83
+──────────────────────────────────────────────────────
+🌐 Verificando conexión de red...
+✅ Conexión activa a Internet detectada.
+🧩 Verificando Firebase CLI...
+✅ Firebase CLI detectada (v14.22.0)
+🔐 Verificando sesión activa de Firebase...
+✅ Sesión activa detectada: Logged in as hugo.watson.primero@gmail.com
+
+❌ Error durante init-firestore.ps1

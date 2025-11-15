@@ -3,9 +3,11 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import ReportForm from './ReportForm';
 import ReportCard from './ReportCard';
 import { getPrefectureReports } from "../services/reportingGateway";
-import { Report, User, ReportType } from "../types";
+import { Report, User, ReportType, GuardianReport } from "../types";
 import { MOCK_STUDENTS } from '../constants';
 import { DocumentPlusIcon, ClockIcon, ChartBarIcon, ExclamationTriangleIcon } from './icons/SolidIcons';
+import { useGuardianReports } from "../hooks/useGuardianReports";
+import { getDashboardModulesForRole } from "../services/roleDashboards";
 
 interface PrefectureDashboardViewProps {
   currentUser: User;
@@ -15,6 +17,9 @@ interface PrefectureDashboardViewProps {
 const PrefectureDashboardView: React.FC<PrefectureDashboardViewProps> = ({ currentUser, viewStudentProfile }) => {
   const [attendanceReports, setAttendanceReports] = useState<Report[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const modules = useMemo(() => getDashboardModulesForRole(currentUser.role), [currentUser.role]);
+  const showGuardianModule = modules.some((module) => module.id === "guardian-inbox");
+  const { reports: guardianReports, loading: guardianLoading, error: guardianError } = useGuardianReports(showGuardianModule);
 
   const fetchReports = async () => {
     const allReports = await getPrefectureReports();
@@ -71,6 +76,30 @@ const PrefectureDashboardView: React.FC<PrefectureDashboardViewProps> = ({ curre
     return { gradeData, reincidences };
   }, [attendanceReports]);
 
+  const guardianForPrefect = useMemo(
+    () =>
+      guardianReports.filter((report) =>
+        (report.roleVisibility ?? []).includes("prefect"),
+      ),
+    [guardianReports],
+  );
+
+  const guardianReincidences = useMemo(() => {
+    const map = new Map<string, { reference: GuardianReport; count: number }>();
+    guardianForPrefect.forEach((report) => {
+      const key = report.title.trim().toLowerCase() || report.id;
+      const current = map.get(key);
+      if (current) {
+        current.count += 1;
+      } else {
+        map.set(key, { reference: report, count: 1 });
+      }
+    });
+    return Array.from(map.values())
+      .filter((entry) => entry.count > 1)
+      .sort((a, b) => b.count - a.count);
+  }, [guardianForPrefect]);
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -90,6 +119,56 @@ const PrefectureDashboardView: React.FC<PrefectureDashboardViewProps> = ({ curre
           <ReportForm currentUser={currentUser} onReportSubmit={handleReportSubmitted} />
         </div>
       )}
+
+      {showGuardianModule ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <section className="p-4 bg-white dark:bg-gray-900 rounded-lg shadow min-h-[220px]">
+            <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-2">Incidencias recientes de Ángel Guardián</h4>
+            {guardianLoading ? (
+              <p className="text-sm text-gray-500">Sincronizando buzón...</p>
+            ) : guardianError ? (
+              <p className="text-sm text-red-500">{guardianError}</p>
+            ) : guardianForPrefect.length > 0 ? (
+              <ul className="space-y-3">
+                {guardianForPrefect.slice(0, 5).map((report) => (
+                  <li key={report.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <span>{report.displayDate ?? new Date(report.date).toLocaleString("es-MX")}</span>
+                      {report.voiceDurationSec ? <span>{report.voiceDurationSec}s</span> : null}
+                    </div>
+                    <h5 className="font-semibold text-gray-800 dark:text-gray-100">{report.title}</h5>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{report.summary}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Registrado por {report.createdBy?.email ?? report.createdBy?.role ?? "desconocido"}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">No hay incidencias recientes en el buzón.</p>
+            )}
+          </section>
+
+          <section className="p-4 bg-white dark:bg-gray-900 rounded-lg shadow min-h-[220px]">
+            <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-2">Reincidencias detectadas</h4>
+            {guardianReincidences.length > 0 ? (
+              <ul className="space-y-2">
+                {guardianReincidences.map(({ reference, count }) => (
+                  <li
+                    key={`${reference.id}-reincidence`}
+                    className="flex items-center justify-between rounded-lg bg-red-50 dark:bg-red-900/20 px-3 py-2"
+                  >
+                    <span className="text-sm font-medium text-red-700 dark:text-red-200">{reference.title}</span>
+                    <span className="text-sm font-semibold text-red-600 dark:text-red-300">{count} reportes</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">Sin reincidencias detectadas en Ángel Guardián.</p>
+            )}
+          </section>
+        </div>
+      ) : null}
       
       {/* Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

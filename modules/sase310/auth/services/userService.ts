@@ -18,6 +18,7 @@ import { z } from "zod";
 
 import { registerUser } from "../../../../services/authService";
 import { auth, db } from "../../../../services/firebase";
+import { getDocCached, invalidateDocCache, primeDocCache } from "../../services/firestoreMiddleware";
 
 const USERS_COLLECTION = "users";
 const DOCENTES_COLLECTION = "docentes";
@@ -356,7 +357,7 @@ export const ensureUserProfile = async (uid: string, email: string): Promise<Use
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
   const userRef = doc(db, USERS_COLLECTION, uid);
   try {
-    const snapshot = await getDoc(userRef);
+    const snapshot = await getDocCached(userRef);
     return parseUserDoc(snapshot);
   } catch (error) {
     return handleFirestoreError("Recuperacion de perfil fallida", error);
@@ -372,6 +373,7 @@ export const observeUserProfile = (
   return onSnapshot(
     userRef,
     (snapshot) => {
+      primeDocCache(userRef, snapshot);
       onNext(parseUserDoc(snapshot));
     },
     (error) => {
@@ -439,6 +441,7 @@ export const observeTeacherProfile = (
   return onSnapshot(
     teacherRef,
     (snapshot) => {
+      primeDocCache(teacherRef, snapshot);
       onNext(parseTeacherDoc(snapshot));
     },
     (error) => {
@@ -457,6 +460,7 @@ export const saveTeacherProfile = async (uid: string, data: TeacherProfileRecord
       updatedAt: Timestamp.now(),
     };
     await setDoc(teacherRef, payload, { merge: true });
+    invalidateDocCache(teacherRef);
   } catch (error) {
     handleFirestoreError("Registro de datos docentes fallido", error);
   }
@@ -465,7 +469,7 @@ export const saveTeacherProfile = async (uid: string, data: TeacherProfileRecord
 export const getTeacherProfile = async (uid: string): Promise<TeacherProfile | null> => {
   const teacherRef = doc(db, DOCENTES_COLLECTION, uid);
   try {
-    const snapshot = await getDoc(teacherRef);
+    const snapshot = await getDocCached(teacherRef);
     return parseTeacherDoc(snapshot);
   } catch (error) {
     return handleFirestoreError("Recuperacion de datos docentes fallida", error);

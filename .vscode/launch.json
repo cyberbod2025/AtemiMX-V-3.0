@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    
+    
+
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Launch Chrome against Dev Server",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "start-dev-server",
+      "runtimeExecutable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "runtimeArgs": ["--remote-debugging-port=9222"],
+      "userDataDir": true
+    }
+  ]
+}

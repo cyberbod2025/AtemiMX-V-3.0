@@ -1,28 +1,43 @@
 import { httpsCallable } from "firebase/functions";
 
 import type { GuardianReport } from "../types";
-import { decryptJSON, encryptJSON, type EncryptedPayload } from "./encryptionService";
 import { functions } from "./firebase";
 
-export type GuardianReportDraft = Omit<GuardianReport, "id">;
+export interface GuardianReportDraft {
+  title: string;
+  summary: string;
+  transcript: string;
+  date: string;
+  displayDate?: string;
+}
+
+interface GuardianReportAuthor {
+  uid: string;
+  email?: string | null;
+  role?: string | null;
+}
 
 interface SaveEncryptedReportRequest {
-  payload: EncryptedPayload;
+  payload: GuardianReportDraft;
   recordedAtISO?: string;
   voiceDurationSec?: number | null;
+  roleVisibility?: string[];
 }
 
 interface SaveEncryptedReportResponse {
   reportId: string;
   recordedAtISO?: string | null;
   storedAtISO: string;
+  roleVisibility?: string[];
 }
 
 interface GuardianEncryptedDocument {
   id: string;
-  payload: EncryptedPayload;
+  payload: GuardianReportDraft;
   recordedAtISO?: string | null;
   updatedAtISO?: string | null;
+  roleVisibility?: string[];
+  createdBy?: GuardianReportAuthor | null;
   voiceDurationSec?: number | null;
 }
 
@@ -82,13 +97,11 @@ export const saveGuardianReport = async (draft: GuardianReportDraft): Promise<Gu
   const recordedAtISO = toIsoString(draft.date);
 
   try {
-    const payload = await encryptJSON<GuardianReportDraft>({
-      ...draft,
-      date: recordedAtISO,
-    });
-
     const response = await saveEncryptedReportFn({
-      payload,
+      payload: {
+        ...draft,
+        date: recordedAtISO,
+      },
       recordedAtISO,
     });
 
@@ -98,6 +111,7 @@ export const saveGuardianReport = async (draft: GuardianReportDraft): Promise<Gu
       id: response.data.reportId,
       date: recordedAtISO,
       displayDate,
+      roleVisibility: response.data.roleVisibility ?? [],
     };
   } catch (error) {
     console.error("[GuardianReports] No se pudo guardar el reporte cifrado", error);
@@ -108,25 +122,21 @@ export const saveGuardianReport = async (draft: GuardianReportDraft): Promise<Gu
 export const fetchGuardianReports = async (): Promise<GuardianReport[]> => {
   try {
     const response = await getEncryptedReportsFn({});
-    const encryptedDocs = Array.isArray(response.data.reports) ? response.data.reports : [];
+    const documents = Array.isArray(response.data.reports) ? response.data.reports : [];
 
-    const reports = await Promise.all(
-      encryptedDocs.map(async (doc) => {
-        const decrypted = await decryptJSON<GuardianReportDraft>(doc.payload);
-        const recordedAtISO = toIsoString(doc.recordedAtISO ?? decrypted.date);
+    return documents
+      .map((doc) => {
+        const recordedAtISO = toIsoString(doc.recordedAtISO ?? doc.payload?.date);
         return {
-          ...decrypted,
+          ...doc.payload,
           id: doc.id,
           date: recordedAtISO,
+          displayDate: toDisplayDate(recordedAtISO),
+          roleVisibility: doc.roleVisibility ?? [],
+          createdBy: doc.createdBy ?? undefined,
+          voiceDurationSec: doc.voiceDurationSec ?? null,
         };
-      }),
-    );
-
-    return reports
-      .map((report) => ({
-        ...report,
-        displayDate: toDisplayDate(report.date),
-      }))
+      })
       .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
   } catch (error) {
     console.error("[GuardianReports] No se pudieron recuperar los reportes cifrados", error);

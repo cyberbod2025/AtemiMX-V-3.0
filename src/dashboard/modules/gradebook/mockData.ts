@@ -23,6 +23,8 @@ export const buildMockGradebook = (): GradebookModel => {
           label: "Diagnóstico (10)",
           type: "numeric" as const,
           weight: 0.2,
+          campoFormativoId: "campo-saberes",
+          pdaId: "pda-razonamiento",
           config: { min: 0, max: 10, colorRules },
         },
         {
@@ -30,6 +32,8 @@ export const buildMockGradebook = (): GradebookModel => {
           label: "Participación",
           type: "icon" as const,
           weight: 0.1,
+          campoFormativoId: "campo-lenguajes",
+          pdaId: "pda-dialogo",
           config: {
             icons: [
               { value: "⭐️", label: "Sobresaliente", points: 10 },
@@ -43,12 +47,16 @@ export const buildMockGradebook = (): GradebookModel => {
           label: "Producto integrador",
           type: "numeric" as const,
           weight: 0.4,
+          campoFormativoId: "campo-saberes",
+          pdaId: "pda-modelacion",
           config: { min: 0, max: 100, colorRules },
         },
         {
           id: "resumen",
           label: "Resumen autoevaluación",
           type: "text" as const,
+          campoFormativoId: "campo-lenguajes",
+          pdaId: "pda-argumentacion",
         },
         {
           id: "promedio_u1",
@@ -58,6 +66,8 @@ export const buildMockGradebook = (): GradebookModel => {
             formula: "average" as const,
             fromColumns: ["diag", "producto1"],
           },
+          campoFormativoId: "campo-lenguajes",
+          pdaId: "pda-argumentacion",
         },
       ],
     },
@@ -70,6 +80,8 @@ export const buildMockGradebook = (): GradebookModel => {
           label: "Investigación",
           type: "numeric" as const,
           weight: 0.35,
+          campoFormativoId: "campo-saberes",
+          pdaId: "pda-modelacion",
           config: { min: 0, max: 10, colorRules },
         },
         {
@@ -77,6 +89,8 @@ export const buildMockGradebook = (): GradebookModel => {
           label: "Rúbrica Equipo",
           type: "numeric" as const,
           weight: 0.35,
+          campoFormativoId: "campo-lenguajes",
+          pdaId: "pda-argumentacion",
           config: { min: 0, max: 4, colorRules: [
             { min: 0, max: 1.9, bg: "#fee2e2", fg: "#991b1b" },
             { min: 2, max: 2.9, bg: "#fef9c3", fg: "#92400e" },
@@ -91,6 +105,8 @@ export const buildMockGradebook = (): GradebookModel => {
             formula: "badgeMaker" as const,
             fromColumns: ["participacion"],
           },
+          campoFormativoId: "campo-humano",
+          pdaId: "pda-proyecto",
         },
       ],
     },

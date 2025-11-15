@@ -17,6 +17,7 @@ import { ZodError, z } from "zod";
 import { db } from "../../services/firebase";
 import { decryptJSON, encryptJSON, type EncryptedPayload } from "../../services/encryptionService";
 import { reportInputSchema, type ReportInput } from "./validation/reportSchema";
+import type { UserRole } from "./auth/services/userService";
 
 const REPORTS_COLLECTION = "reports";
 
@@ -37,7 +38,7 @@ export interface Report {
   updatedAt: Timestamp;
   ownerName: string | null;
   ownerEmail: string | null;
-  ownerRole: string | null;
+  ownerRole: UserRole | null;
 }
 
 interface ReportSecretPayload {
@@ -47,7 +48,7 @@ interface ReportSecretPayload {
   dateISO: string;
   ownerName: string | null;
   ownerEmail: string | null;
-  ownerRole: string | null;
+  ownerRole: UserRole | null;
 }
 
 type ReportRecord = {
@@ -64,8 +65,46 @@ export type { ReportInput } from "./validation/reportSchema";
 export interface ReportOwnerMeta {
   name?: string | null;
   email?: string | null;
-  role?: string | null;
+  role?: UserRole | null;
 }
+
+interface NormalizedOwnerMeta {
+  name: string | null;
+  email: string | null;
+  role: UserRole;
+}
+
+const REPORT_AUTHOR_ROLES: readonly UserRole[] = ["teacher", "guidance", "prefect", "socialWork", "medical", "admin"] as const;
+const REPORT_AUTHOR_ROLE_SET = new Set<UserRole>(REPORT_AUTHOR_ROLES);
+
+const isAllowedReporterRole = (role?: UserRole | null): role is UserRole => {
+  if (!role) {
+    return false;
+  }
+  return REPORT_AUTHOR_ROLE_SET.has(role);
+};
+
+const resolveOwnerMeta = (owner?: ReportOwnerMeta): NormalizedOwnerMeta => {
+  if (!owner) {
+    throw new Error("No se encontrÃ³ el perfil del autor del reporte.");
+  }
+  if (!isAllowedReporterRole(owner.role)) {
+    throw new Error("Tu rol no estÃ¡ autorizado para registrar reportes.");
+  }
+  return {
+    role: owner.role,
+    name: normalizeMeta(owner.name),
+    email: normalizeMeta(owner.email?.toLowerCase()) ?? null,
+  };
+};
+
+const parseStoredOwnerRole = (value: unknown): UserRole | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase() as UserRole;
+  return REPORT_AUTHOR_ROLE_SET.has(normalized) ? normalized : null;
+};
 
 const reportUpdateSchema = reportInputSchema.omit({ uid: true }).partial();
 type ReportUpdatePayload = z.infer<typeof reportUpdateSchema>;
@@ -108,14 +147,14 @@ const normalizeMeta = (value: string | null | undefined): string | null => {
   return trimmed && trimmed.length > 0 ? trimmed : null;
 };
 
-const buildSecretPayload = (data: ReportInput, owner?: ReportOwnerMeta): ReportSecretPayload => ({
+const buildSecretPayload = (data: ReportInput, owner: NormalizedOwnerMeta): ReportSecretPayload => ({
   title: data.title,
   description: data.description,
   category: data.category,
   dateISO: data.date,
-  ownerName: normalizeMeta(owner?.name) ?? null,
-  ownerEmail: normalizeMeta(owner?.email?.toLowerCase()) ?? null,
-  ownerRole: normalizeMeta(owner?.role) ?? null,
+  ownerName: owner.name,
+  ownerEmail: owner.email,
+  ownerRole: owner.role,
 });
 
 const decryptSecretPayload = async (
@@ -138,14 +177,15 @@ const decryptSecretPayload = async (
           : "",
     ownerName: typeof record.ownerName === "string" ? record.ownerName : null,
     ownerEmail: typeof record.ownerEmail === "string" ? record.ownerEmail : null,
-    ownerRole: typeof record.ownerRole === "string" ? record.ownerRole : null,
+    ownerRole: parseStoredOwnerRole(record.ownerRole),
   };
 };
 
 export const createReport = async (data: ReportInput, owner?: ReportOwnerMeta): Promise<Report> => {
   const validated = validateReportInput(data);
   const now = Timestamp.now();
-  const secretPayload = buildSecretPayload(validated, owner);
+  const normalizedOwner = resolveOwnerMeta(owner);
+  const secretPayload = buildSecretPayload(validated, normalizedOwner);
   const encryptedPayload = await encryptJSON(secretPayload);
 
   const reportsRef = collection(db, REPORTS_COLLECTION);

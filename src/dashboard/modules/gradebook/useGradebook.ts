@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchGradebookModel, persistGradebookModel } from "@/dashboard/services/gradebookService";
-import type { GradebookModel, GradebookTab } from "./types";
+import type { GradebookModel, GradebookTab, GradebookColumn } from "./types";
 import { buildMockGradebook } from "./mockData";
 
 export interface UseGradebookOptions {
@@ -22,6 +22,7 @@ export interface GradebookHook {
   loading: boolean;
   saving: boolean;
   error: string | null;
+  updateColumnMetadata: (tabId: string, columnId: string, metadata: Partial<Pick<GradebookColumn, "campoFormativoId" | "pdaId" | "evidenciasRequeridas">>) => void;
 }
 
 export const useGradebook = (options: UseGradebookOptions = {}): GradebookHook => {
@@ -93,19 +94,38 @@ export const useGradebook = (options: UseGradebookOptions = {}): GradebookHook =
     }, 800);
   };
 
-  const updateCell = (studentId: string, columnId: string, value: number | string | null) => {
-    setModel((prev) => {
-      const next: GradebookModel = JSON.parse(JSON.stringify(prev));
-      if (!next.cells[studentId]) {
-        next.cells[studentId] = {};
-      }
-      next.cells[studentId][columnId] = { studentId, columnId, value };
+const updateCell = (studentId: string, columnId: string, value: number | string | null) => {
+  setModel((prev) => {
+    const next: GradebookModel = JSON.parse(JSON.stringify(prev));
+    if (!next.cells[studentId]) {
+      next.cells[studentId] = {};
+    }
+    next.cells[studentId][columnId] = { studentId, columnId, value };
+    schedulePersist(next);
+    return next;
+  });
+};
+
+const updateColumnMetadata = (
+  tabId: string,
+  columnId: string,
+  metadata: Partial<Pick<GradebookColumn, "campoFormativoId" | "pdaId" | "evidenciasRequeridas">>,
+) => {
+  setModel((prev) => {
+    const next: GradebookModel = JSON.parse(JSON.stringify(prev));
+    const tab = next.tabs.find((entry) => entry.id === tabId);
+    if (tab) {
+      tab.columns = tab.columns.map((column) =>
+        column.id === columnId ? { ...column, ...metadata } : column,
+      );
       schedulePersist(next);
       return next;
-    });
-  };
+    }
+    return prev;
+  });
+};
 
-  const getValue = (studentId: string, columnId: string) => model.cells[studentId]?.[columnId]?.value ?? null;
+const getValue = (studentId: string, columnId: string) => model.cells[studentId]?.[columnId]?.value ?? null;
   const getNumericValue = (studentId: string, columnId: string): number | null => {
     const value = getValue(studentId, columnId);
     if (typeof value === "number") {
@@ -157,5 +177,6 @@ export const useGradebook = (options: UseGradebookOptions = {}): GradebookHook =
     loading,
     saving,
     error,
+    updateColumnMetadata,
   };
 };

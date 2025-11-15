@@ -1,4 +1,4 @@
-import { ReportPriority, ReportStatus, ReportType } from "@/dashboard/types";
+import { ReportPriority, ReportStatus, ReportType, UserRole as DashboardUserRole } from "@/dashboard/types";
 import type { Report as DashboardReport, User } from "@/dashboard/types";
 import {
   createReport as createSaseReport,
@@ -6,6 +6,7 @@ import {
   getReportsByUser,
   type Report as SaseReport,
 } from "../../../modules/sase310/firestoreService";
+import type { UserRole as SaseUserRole } from "../../../modules/sase310/auth/services/userService";
 import {
   fetchIncidentMetadataByTeacher,
   fetchAllIncidentMetadata,
@@ -26,6 +27,22 @@ const CATEGORY_MAP: Record<string, ReportType> = {
 const normalizeCategory = (value: string): ReportType => {
   const key = value.trim().toLowerCase();
   return CATEGORY_MAP[key] ?? ReportType.Disciplinary;
+};
+
+const DASHBOARD_TO_SASE_ROLE: Record<DashboardUserRole, SaseUserRole | null> = {
+  [DashboardUserRole.Teacher]: "teacher",
+  [DashboardUserRole.Guidance]: "guidance",
+  [DashboardUserRole.Admin]: "admin",
+  [DashboardUserRole.Prefect]: "prefect",
+  [DashboardUserRole.Student]: null,
+};
+
+const mapDashboardRoleToSase = (role: DashboardUserRole): SaseUserRole => {
+  const resolved = DASHBOARD_TO_SASE_ROLE[role] ?? null;
+  if (!resolved) {
+    throw new Error("El rol actual no puede generar reportes en SASE-310.");
+  }
+  return resolved;
 };
 
 const toDashboardReport = (report: SaseReport): DashboardReport => ({
@@ -53,6 +70,7 @@ export const submitIncidentReport = async (payload: {
   type: ReportType;
 }): Promise<DashboardReport> => {
   const nowISO = new Date().toISOString();
+  const reporterRole = mapDashboardRoleToSase(payload.teacher.role);
   const saseReport = await createSaseReport(
     {
       title: payload.subject || payload.type,
@@ -64,7 +82,7 @@ export const submitIncidentReport = async (payload: {
     {
       name: payload.teacher.name,
       email: (payload as unknown as { email?: string }).email ?? null,
-      role: payload.teacher.role,
+      role: reporterRole,
     },
   );
 

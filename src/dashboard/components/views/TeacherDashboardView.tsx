@@ -3,10 +3,13 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recha
 import ReportForm from '../ReportForm';
 import ReportCard from '../ReportCard';
 import { getReportsByTeacher } from "../../services/mockDataService";
-import { Report, User, ReportType, ReportStatus } from '../../types';
+import { Report, User, ReportType, ReportStatus, GuardianReport } from '../../types';
 import { DocumentPlusIcon, ClockIcon, ChartBarIcon } from '../icons/SolidIcons';
 import { GradebookPanel } from '../../modules/gradebook/GradebookPanel';
 import { PlannerPanel } from "../PlannerPanel";
+import { useGuardianReports } from "../../hooks/useGuardianReports";
+import { getDashboardModulesForRole } from "../../services/roleDashboards";
+import { useAuth } from "@/hooks/useAuth";
 
 interface TeacherDashboardViewProps {
   currentUser: User;
@@ -16,8 +19,13 @@ interface TeacherDashboardViewProps {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ currentUser, viewStudentProfile }) => {
+  const { user } = useAuth();
   const [myReports, setMyReports] = useState<Report[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const modules = useMemo(() => getDashboardModulesForRole(currentUser.role), [currentUser.role]);
+  const showGuardianModule = modules.some((module) => module.id === "guardian-inbox");
+  const { reports: guardianReports, loading: guardianLoading, error: guardianError } = useGuardianReports(showGuardianModule);
+  const gradebookTeacherId = user?.uid === currentUser.id ? currentUser.id : null;
 
   const fetchReports = useCallback(async () => {
     const reports = await getReportsByTeacher(currentUser.id);
@@ -32,6 +40,23 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ currentUser
     setMyReports(prevReports => prevReports.map(r => r.id === updatedReport.id ? updatedReport : r));
   };
   
+  const myGuardianReports = useMemo(
+    () => guardianReports.filter((report) => report.createdBy?.uid === currentUser.id),
+    [guardianReports, currentUser.id],
+  );
+
+  const guardianHighlights = useMemo(() => {
+    const total = myGuardianReports.length;
+    const avgDuration =
+      total > 0
+        ? Math.round(
+            myGuardianReports.reduce((acc, report) => acc + (report.voiceDurationSec ?? 0), 0) / total,
+          )
+        : 0;
+    const latest = myGuardianReports.slice(0, 3);
+    return { total, avgDuration, latest };
+  }, [myGuardianReports]);
+
   const analyticsData = useMemo(() => {
     const reportsByType = myReports.reduce((acc, report) => {
         acc[report.type] = (acc[report.type] || 0) + 1;
@@ -50,9 +75,9 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ currentUser
 
 return (
     <div className="space-y-6">
-      <div className="dashboard-grid">
+        <div className="dashboard-grid">
         <div className="dashboard-grid__item">
-          <GradebookPanel teacherId={currentUser.id} />
+          <GradebookPanel teacherId={gradebookTeacherId ?? undefined} />
         </div>
         <div className="dashboard-grid__item">
           <PlannerPanel teacher={currentUser} />
@@ -117,6 +142,55 @@ return (
       )}
 
       <div>
+        {showGuardianModule ? (
+          <section className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-5 mb-6">
+            <header className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm text-gray-500 uppercase tracking-wide">Ángel Guardián</p>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Mis reportes recientes</h3>
+              </div>
+              <div className="text-right text-sm text-gray-500 dark:text-gray-400">
+                {guardianHighlights.total} activos · duración media {guardianHighlights.avgDuration}s
+              </div>
+            </header>
+            {guardianLoading ? (
+              <p className="text-sm text-gray-500">Sincronizando registros...</p>
+            ) : guardianError ? (
+              <p className="text-sm text-red-500">{guardianError}</p>
+            ) : guardianHighlights.latest.length > 0 ? (
+              <ul className="space-y-3">
+                {guardianHighlights.latest.map((report) => (
+                  <li
+                    key={report.id}
+                    className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-1"
+                  >
+                    <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                      <span>{report.displayDate ?? new Date(report.date).toLocaleString("es-MX")}</span>
+                      {report.voiceDurationSec ? <span>{report.voiceDurationSec}s</span> : null}
+                    </div>
+                    <h4 className="font-semibold text-gray-800 dark:text-gray-100">{report.title}</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{report.summary}</p>
+                    <div className="flex flex-wrap gap-2 text-xs mt-1">
+                      {(report.roleVisibility ?? [])
+                        .filter(Boolean)
+                        .map((role) => (
+                          <span
+                            key={`${report.id}-${role}`}
+                            className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200"
+                          >
+                            {role}
+                          </span>
+                        ))}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">Aún no hay registros en Ángel Guardián.</p>
+            )}
+          </section>
+        ) : null}
+
         <h3 className="text-xl font-semibold flex items-center mb-4 text-gray-700 dark:text-gray-300">
           <ClockIcon className="h-6 w-6 mr-2"/>
           Historial de Reportes Enviados

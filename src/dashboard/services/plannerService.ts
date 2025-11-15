@@ -37,6 +37,8 @@ export const updatePlannerEntry = async (entryId: string, draft: PlannerDraft): 
   const entryRef = doc(db, COLLECTION, entryId);
   await updateDoc(entryRef, {
     ...draft,
+    campoFormativoId: draft.campoFormativoId,
+    pdaId: draft.pdaId,
     updatedAtISO: new Date().toISOString(),
   });
 };

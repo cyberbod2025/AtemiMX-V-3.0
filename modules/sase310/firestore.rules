@@ -25,6 +25,14 @@ service cloud.firestore {
       return request.auth != null && data.uid == request.auth.uid;
     }
 
+    function ownsPlannerData(data) {
+      return request.auth != null && data != null && data.teacherId == request.auth.uid;
+    }
+
+    function ownsGradebookDoc(teacherId) {
+      return request.auth != null && request.auth.uid == teacherId;
+    }
+
     match /users/{uid} {
       allow get: if isSelf(uid) || isAdmin();
       allow list: if isAdmin();
@@ -92,6 +100,19 @@ service cloud.firestore {
 
     match /_meta/{docId} {
       allow read, write: if isAdmin();
+    }
+
+    match /plannerEntries/{entryId} {
+      allow get, list: if ownsPlannerData(resource.data) || isAdmin();
+      allow create: if ownsPlannerData(request.resource.data) || isAdmin();
+      allow update: if (ownsPlannerData(resource.data) && ownsPlannerData(request.resource.data)) || isAdmin();
+      allow delete: if ownsPlannerData(resource.data) || isAdmin();
+    }
+
+    match /gradebooks/{teacherId} {
+      allow get: if ownsGradebookDoc(teacherId) || isAdmin();
+      allow list: if isAdmin();
+      allow create, update, delete: if ownsGradebookDoc(teacherId) || isAdmin();
     }
 
     match /{document=**} {

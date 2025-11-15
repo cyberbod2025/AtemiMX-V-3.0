@@ -12,6 +12,9 @@ export interface GradebookColumn {
   label: string;
   type: GradeColumnType;
   weight?: number;
+  campoFormativoId?: string;
+  pdaId?: string;
+  evidenciasRequeridas?: boolean;
   config?: {
     min?: number;
     max?: number;
