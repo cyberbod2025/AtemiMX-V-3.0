@@ -24,7 +24,7 @@ const App: React.FC<DashboardAppProps> = ({ users, defaultUserId, defaultView = 
     const userPool = useMemo(() => (users?.length ? users : MOCK_USERS), [users]);
     const initialUserId = defaultUserId ?? userPool[0]?.id;
     const [currentUserId, setCurrentUserId] = useState<string>(initialUserId);
-    const [currentView, setCurrentView] = useState(defaultView);
+    const [currentView, setCurrentView] = useState<string | null>(null);
     const [studentProfileId, setStudentProfileId] = useState<string | null>(null);
 
     const isMobile = useMediaQuery('(max-width: 768px)');
@@ -68,6 +68,12 @@ const App: React.FC<DashboardAppProps> = ({ users, defaultUserId, defaultView = 
             }
         }
     };
+
+    useEffect(() => {
+        if (currentUser) {
+            handleUserChange(currentUser.id);
+        }
+    }, [currentUser]);
 
     const handleViewChange = (view: string) => {
         if (view.startsWith('student-profile:')) {

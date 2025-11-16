@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { GENERAL_BRANDING, getBrandingForRole } from "../../branding";
 import type { DepartmentBranding } from "../../branding";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { loginUser, logoutUser, requestPasswordReset } from "../../services/authService";
 import RegisterForm, { type FieldValidationState, type RegisterFormValues } from "./auth/components/RegisterForm";
 import ReauthModal from "./auth/components/ReauthModal";

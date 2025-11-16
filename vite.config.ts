@@ -1,7 +1,6 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-
-const projectRoot = new URL("./src", import.meta.url).pathname;
+import path from "path";
 
 export default defineConfig({
   base: "./",
@@ -13,7 +12,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": projectRoot,
+      "@": path.resolve(__dirname, "src"),
     },
   },
   build: {
