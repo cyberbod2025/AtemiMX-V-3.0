@@ -7,7 +7,7 @@ import {
   saveGuardianReport,
   type GuardianReportDraft,
 } from "../services/guardianReportsService";
-import { useAuth } from "./useAuth";
+import { useAuth } from "@/hooks/useAuth";
 
 interface UseIncidentsResult {
   reports: GuardianReport[];

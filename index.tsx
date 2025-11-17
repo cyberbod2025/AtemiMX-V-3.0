@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
+
+import AuthRouter from "@/auth/AuthRouter";
 import App from "./App";
 import { AuthProvider } from "@/contexts/AuthContext";
 import OnboardingLegal from "./OnboardingLegal";
@@ -34,6 +36,8 @@ const AppGate: React.FC = () => {
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <AppGate />
+    <AuthRouter>
+      <AppGate />
+    </AuthRouter>
   </React.StrictMode>,
 );
