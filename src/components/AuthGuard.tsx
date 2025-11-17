@@ -5,11 +5,11 @@ import { onAuthStateChanged } from "firebase/auth";
 
 import { auth } from "@/lib/firebase";
 
-interface AuthGuardProps {
+type AuthGuardProps = {
   children: ReactNode;
-}
+};
 
-const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
+const AuthGuard = ({ children }: AuthGuardProps) => {
   const [checking, setChecking] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
 
